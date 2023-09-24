@@ -25,16 +25,10 @@ jobs:
         server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
         settings-path: ${{ github.workspace }} # location for the settings.xml file
   
-    - name: maven-settings
-      uses: s4u/maven-settings-action@v2
-      with:
-        servers: '[{"id": "github", "username": "phisch84", "password": "${GITHUB_TOKEN_REF}"}]'
-        githubServer: false
-
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package --file pom.xml -s $GITHUB_WORKSPACE/settings.xml
       env:
-        GITHUB_TOKEN_REF: ${{ secrets.GH_MVN_READ_PACKAGES }}
+        GITHUB_TOKEN: ${{ github.token }}
 
     - name: Publish to GitHub Packages Apache Maven
       run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml
