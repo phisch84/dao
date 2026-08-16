@@ -5,6 +5,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import com.schoste.ddd.infrastructure.dal.v2.exceptions.DALException;
 import com.schoste.ddd.infrastructure.dal.v2.models.GenericDataObject;
@@ -304,6 +306,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public T get(int id) throws DALException 
 	{
 		try
@@ -359,6 +362,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public Collection<T> getAll() throws DALException 
 	{
 		try
@@ -385,6 +389,23 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
+	public Stream<T> getAll(Predicate<? super T> filterPredicate) throws DALException 
+	{
+		try
+		{
+			return null;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	public void save(T dataObject) throws IllegalArgumentException, DALException 
 	{
 		if (dataObject == null) throw new IllegalArgumentException("dataObject");
@@ -410,6 +431,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * {@inheritDoc}
 	 */
 	@SuppressWarnings("unchecked")
+	@Override
 	public void save(Object dataObject) throws IllegalArgumentException, DALException 
 	{
 		try
@@ -504,6 +526,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public void delete(T dataObject) throws IllegalArgumentException, DALException 
 	{
 		if (dataObject == null) throw new IllegalArgumentException("dataObject");
@@ -529,6 +552,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * {@inheritDoc}
 	 */
 	@SuppressWarnings("unchecked")
+	@Override
 	public void delete(Object dataObject) throws IllegalArgumentException, DALException 
 	{
 		try

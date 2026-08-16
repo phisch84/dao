@@ -1,6 +1,8 @@
 package com.schoste.ddd.infrastructure.dal.v2.services;
 
 import java.util.Collection;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import com.schoste.ddd.infrastructure.dal.v2.exceptions.DALException;
 import com.schoste.ddd.infrastructure.dal.v2.models.GenericDataObject;
@@ -57,7 +59,18 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public Collection<T> getAll() throws DALException;
-	
+
+	/**
+	 * Lazily loads data object from the underlying data source and matches them
+	 * against a given filter (if provided). No time stamps are considered.
+	 * All objects that are returned by the internal sourcing method are loaded.
+	 * 
+	 * @param filterPredicate if not null, then this filter predicate will be applied on each loaded data object before it is considered to be added to the result stream
+	 * @return a stream of data objects which passed a given filter (if provided)
+	 * @throws DALException re-throws every exception as DAL exception
+	 */
+	public Stream<T> getAll(Predicate<? super T> filterPredicate) throws DALException;
+
 	/**
 	 * Resets the modification time stamp and gets all not deleted data objects
 	 * from the underlying data source
