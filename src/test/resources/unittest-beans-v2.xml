@@ -8,4 +8,5 @@
 
     <bean id="MockedDO" class="com.schoste.ddd.infrastructure.dal.v2.models.MockedDO" scope="prototype" />
     <bean id="MockedDAO" class="com.schoste.ddd.infrastructure.dal.v2.services.mocked.MockedDAOImpl" scope="singleton" />
+    <bean id="LazyLoader" class="com.schoste.ddd.infrastructure.dal.v2.services.mocked.MockedLazyLoaderImpl" scope="prototype" />
 </beans>

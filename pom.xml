@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao</artifactId>
-    <version>3.0.0.RELEASE</version>
+    <version>3.1.0.RELEASE</version>
     <name>Generic DAO</name>
     <url>https://www.schoste.com/</url>
 

@@ -2,6 +2,9 @@ package com.schoste.ddd.infrastructure.dal.v2.services;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -495,7 +498,7 @@ public abstract class GenericDAOTest <DO extends GenericDataObject, DAO extends 
 
 		for (int i=0; i<NUM_DATA_OBJECTS; i++)
 		{
-			DO dataObject = this.createDataObject(0, "testDeleteMany", i);
+			DO dataObject = this.createDataObject(0, "testDeleteManyIds", i);
 			
 			this.getDataAccessObject().save(dataObject);
 			
@@ -512,4 +515,46 @@ public abstract class GenericDAOTest <DO extends GenericDataObject, DAO extends 
 			Assert.assertNull(this.getDataAccessObject().get(dataObjectId));
 		}
 	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#getAll(java.util.function.Predicate)} method of a DAO implementation
+	 * actually returns a stream with all expected objects since no predicate (null) was provided
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetAllStreamedWithoutPredicate() throws Exception
+	{
+		try (Stream<DO> doStream = this.getDataAccessObject().getAll(null))
+		{
+			// New IDs can be anything greater than 0
+			doStream.forEach(dataObject 
+				-> Assert.assertTrue(dataObject.getId() > 0));
+		}
+	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#getAll(java.util.function.Predicate)} method of a DAO implementation
+	 * actually returns a stream with all expected objects that are supposed to pass the filter predicate
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetAllStreamedWithPredicate() throws Exception
+	{
+		int expectedMinId = 5;
+
+		try (Stream<DO> doStream = this.getDataAccessObject().getAll(dataObj -> dataObj.getId() > expectedMinId))
+		{
+			Iterator<DO> it = doStream.iterator();
+
+			while (it.hasNext())
+			{
+				DO dataObject = it.next();
+
+				Assert.assertTrue(dataObject.getId() > expectedMinId);
+			}
+		}
+	}
+
 }

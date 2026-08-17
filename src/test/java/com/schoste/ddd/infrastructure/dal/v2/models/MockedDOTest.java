@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.schoste.ddd.infrastructure.dal.v2.models.MockedDO;
 import com.schoste.ddd.testing.v1.GenericObjectTest;
 
 /**
