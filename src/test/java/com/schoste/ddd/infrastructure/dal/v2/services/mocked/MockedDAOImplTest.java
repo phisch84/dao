@@ -21,7 +21,6 @@ import com.schoste.ddd.infrastructure.dal.v2.services.listeners.MockedReloadList
 import com.schoste.ddd.infrastructure.dal.v2.services.listeners.MockedSaveListener;
 import com.schoste.ddd.infrastructure.dal.v2.services.listeners.ReloadListener;
 import com.schoste.ddd.infrastructure.dal.v2.services.listeners.SaveListener;
-import com.schoste.ddd.infrastructure.dal.v2.services.mocked.MockedDAOImpl;
 
 /**
  * Test class of the {@link MockedDAOImpl} implementation

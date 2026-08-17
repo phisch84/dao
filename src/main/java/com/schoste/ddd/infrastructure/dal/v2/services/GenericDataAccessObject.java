@@ -61,9 +61,9 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	public Collection<T> getAll() throws DALException;
 
 	/**
-	 * Lazily loads data object from the underlying data source and matches them
-	 * against a given filter (if provided). No time stamps are considered.
-	 * All objects that are returned by the internal sourcing method are loaded.
+	 * Lazily loads data object from the underlying data source and matches them against a given filter (if provided).
+	 * All objects that are returned by the internal sourcing method (defined in the implementation of {@link LazyLoader}) are loaded.
+	 * Whether time staps are updated in the DAO, or whether its listeners are notified also depends on the implementation of the interface
 	 * 
 	 * @param filterPredicate if not null, then this filter predicate will be applied on each loaded data object before it is considered to be added to the result stream
 	 * @return a stream of data objects which passed a given filter (if provided)

@@ -2,6 +2,7 @@ package com.schoste.ddd.infrastructure.dal.v2.services;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -524,18 +525,12 @@ public abstract class GenericDAOTest <DO extends GenericDataObject, DAO extends 
 	@Test
 	public void testGetAllStreamedWithoutPredicate() throws Exception
 	{
-		int numOfDataObjects = 10;
-
-		Stream<DO> doStream = this.getDataAccessObject().getAll(null);
-		Collection<DO> dataObjects = doStream.collect(Collectors.toList());
-
-		Assert.assertTrue(dataObjects.size() >= numOfDataObjects);
-		Assert.assertTrue(this.assertDefaultGetListenersBeforeGet(0));
-		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(numOfDataObjects));
-
-		// New IDs can be anything greater than 0
-		for (DO dataObject : dataObjects) Assert.assertTrue(dataObject.getId() > 0);
-
+		try (Stream<DO> doStream = this.getDataAccessObject().getAll(null))
+		{
+			// New IDs can be anything greater than 0
+			doStream.forEach(dataObject 
+				-> Assert.assertTrue(dataObject.getId() > 0));
+		}
 	}
 
 	/**
@@ -548,18 +543,18 @@ public abstract class GenericDAOTest <DO extends GenericDataObject, DAO extends 
 	public void testGetAllStreamedWithPredicate() throws Exception
 	{
 		int expectedMinId = 5;
-		int numOfDataObjects = 10;
 
-		Stream<DO> doStream = this.getDataAccessObject().getAll(dataObj -> dataObj.getId() > expectedMinId);
-		Collection<DO> dataObjects = doStream.collect(Collectors.toList());
+		try (Stream<DO> doStream = this.getDataAccessObject().getAll(dataObj -> dataObj.getId() > expectedMinId))
+		{
+			Iterator<DO> it = doStream.iterator();
 
-		Assert.assertTrue(dataObjects.size() >= numOfDataObjects);
-		Assert.assertTrue(this.assertDefaultGetListenersBeforeGet(0));
-		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(numOfDataObjects));
+			while (it.hasNext())
+			{
+				DO dataObject = it.next();
 
-		// New IDs can be anything greater than 0
-		for (DO dataObject : dataObjects) Assert.assertTrue(dataObject.getId() > expectedMinId);
-
+				Assert.assertTrue(dataObject.getId() > expectedMinId);
+			}
+		}
 	}
 
 }

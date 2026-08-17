@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import com.schoste.ddd.infrastructure.dal.v2.exceptions.DALException;
 import com.schoste.ddd.infrastructure.dal.v2.models.GenericDataObject;
@@ -112,6 +113,18 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract void doClear() throws Exception;
+
+	/**
+	 * Returns an iterable object that will poll the next available data object from the data source
+	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll(Predicate)}
+	 * 
+	 * To be overwritten by the extending class.
+	 * 
+	 * @param <T> the class of the data object to load
+	 * @return an iterable object that will poll the next available data object from the data source
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract LazyLoader<Integer, T> createLazyLoader() throws Exception;
 
 	/**
 	 * {@inheritDoc}
@@ -390,11 +403,17 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Stream<T> getAll(Predicate<? super T> filterPredicate) throws DALException 
+	public Stream<T> getAll(Predicate<? super T> filterPredicate) throws DALException
 	{
 		try
 		{
-			return null;
+			LazyLoader<Integer, T> ll = this.createLazyLoader();
+			Stream<T> lazyLoadingStream = (filterPredicate == null) ? StreamSupport.stream(ll, false)
+																	: StreamSupport.stream(ll, false).filter(filterPredicate);
+
+					  lazyLoadingStream.onClose(ll);
+
+			return lazyLoadingStream;
 		}
 		catch (Exception e)
 		{
