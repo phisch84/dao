@@ -99,15 +99,6 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	protected abstract void doDelete(ID[] dataObjectIds) throws Exception;
 
 	/**
-	 * The method that actually reloads data objects and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @return a list of loaded data objects
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract Collection<DO> doReloadAll() throws Exception;
-
-	/**
 	 * Clears the actual storage. This method needs to be implemented by its deriving class.
 	 * Consider implementing the method synchronized for thread safety.
 	 * 

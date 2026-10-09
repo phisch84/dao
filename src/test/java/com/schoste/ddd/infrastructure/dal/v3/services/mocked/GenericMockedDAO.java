@@ -154,13 +154,4 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Integer>> ext
 			if (dataObj != null) dataObj.setIsDeleted(true);
 		}
 	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected synchronized Collection<T> doReloadAll() throws Exception
-	{
-		return this.dataObjects.values();		
-	}
 }
