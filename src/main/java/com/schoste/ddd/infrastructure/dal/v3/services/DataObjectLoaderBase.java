@@ -1,26 +1,47 @@
 package com.schoste.ddd.infrastructure.dal.v3.services;
 
+import java.io.Serializable;
+import java.util.Collection;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
+import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
 
-/**
- * A generic stub for an implementation of the {@link DataObjectLoader} interface.
- * 
- * @param <SR> the data type of a potential source record that needs to be converted into the actual data object
- * @param <DO> the data type of the actual data object returned by the loader.
- */
-abstract public class GenericDataObjectLoader<SR, DO extends GenericDataObject> implements DataObjectLoader<SR, DO>
+abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO extends GenericDataObject<ID>> implements DataObjectLoader<SR, ID, DO>
 {
+    protected GenericDataAccessObject<ID, DO> dataAccessObject;
     protected Function<SR, DO> sourceRecordToDataObjConversionFn;
 
-    public GenericDataObjectLoader(Function<SR, DO> sourceRecordToDataObjConversionFn)
+    /**
+     * Calls {@link GetListener#onAfterGet(GenericDataObject)} for every {@link GetListener} registered
+     * at the data access object provided to this loader after the actual data object has been retrieved
+     * 
+     * @param dataObject the data object that was loaded and is about to be returned
+     */
+    protected DO raiseAfterGet(DO dataObject)
     {
+        Collection<GetListener<ID, DO>> daoGetListeners = this.dataAccessObject.getOnGetListeners();
+
+        for (GetListener<ID, DO> listener : daoGetListeners) dataObject = listener.onAfterGet(dataObject);
+    
+        return dataObject;
+    }
+
+    /**
+     * Creates a new instance of the loader
+     * 
+     * @param dataAccessObject the DAO for which the loader was created
+     * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
+     */
+    public DataObjectLoaderBase(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn) throws IllegalArgumentException
+    {
+        if (dataAccessObject == null) throw new IllegalArgumentException();
         if (sourceRecordToDataObjConversionFn == null) throw new IllegalArgumentException();
 
+        this.dataAccessObject = dataAccessObject;
         this.sourceRecordToDataObjConversionFn = sourceRecordToDataObjConversionFn;
     }
 
@@ -46,6 +67,8 @@ abstract public class GenericDataObjectLoader<SR, DO extends GenericDataObject> 
      * Implements {@link Spliterator#tryAdvance(Consumer)}.
      * Called by the encapsulating {@link Stream} class when the next record is requested.
      * Needs to be implemented by the deriving class.
+     * 
+     * When implementing the concrete DataObjectLoader, consider when to make calls to {@link GetListener#onBeforeGet(Serializable)} and {@link GetListener#onAfterGet(GenericDataObject)}
      * 
      * @param action the consumer of the stream that will take the next data object when {@link Consumer#accept(Object)} is called by this method.
      * @return true if a data object was provided, false if there are no more data objects

@@ -8,11 +8,11 @@ import java.io.Serializable;
  * 
  * @author Philipp Schosteritsch
  */
-public abstract class GenericDataObject implements Serializable
+public abstract class GenericDataObject<ID extends Serializable> implements Serializable
 {
 	private static final long serialVersionUID = -2290296019886002692L; // use Id of V1 for compatibility (no fields changed)
 
-	private int id=0;
+	private ID id;
 
 	private long createdTimeStamp=0;
 	
@@ -21,24 +21,22 @@ public abstract class GenericDataObject implements Serializable
 	private boolean isDeleted=false;
 	
 	/**
-	 * Gets the numeric id of the object in the database.
-	 * If the id is zero or smaller, the object was not persisted yet
+	 * Gets the unique identifier of the object in the database.
 	 * 
-	 * @return the numeric id of the object in the database
+	 * @return the unique identifier of the object in the database
 	 */
-	public int getId() 
+	public ID getId() 
 	{
 		return id;
 	}
 
 	/**
-	 * Sets the numeric id of the object in the database.
-	 * If the id is zero or smaller, the object was not persisted yet.
-	 * When the object is persisted, such an id will be overwritten.
+	 * Sets the unique identifier of the object in the database.
+	 * When the object is persisted, such the id may be overwritten.
 	 * 
-	 * @param id the numeric id of the object in the database
+	 * @param id the unique identifier of the object in the database
 	 */
-	public void setId(int id) 
+	public void setId(ID id) 
 	{
 		this.id = id;
 	}
@@ -118,12 +116,20 @@ public abstract class GenericDataObject implements Serializable
 	}
 	
 	/**
-	 * Gets the id of the object as hash code
+	 * Gets the id of the object as hash code.
+	 * The return value is the hash code of the data object's id (see {@link GenericDataObject#getId()}).
+	 * If the id is null the method returns 0.
+	 * 
+	 * @return the hash code of this instance
 	 */
 	@Override
 	public int hashCode() 
 	{
-		return this.getId();
+		ID id = this.getId();
+
+		if (id == null) return 0;
+
+		return id.hashCode();
 	}
 
 	/**
@@ -133,6 +139,7 @@ public abstract class GenericDataObject implements Serializable
 	 * @param obj the object to compare to
 	 * @return true if both objects are equal, false otherwise
 	 */
+	@SuppressWarnings("unchecked")
 	@Override
 	public boolean equals(Object obj) 
 	{
@@ -140,11 +147,11 @@ public abstract class GenericDataObject implements Serializable
 		if (obj == null) return false;
 		if (getClass() != obj.getClass()) return false;
 		
-		GenericDataObject other = (GenericDataObject) obj;
+		GenericDataObject<ID> other = (GenericDataObject<ID>) obj;
 		
 		if (createdTimeStamp != other.createdTimeStamp) return false;
 		if (modifiedTimeStamp != other.modifiedTimeStamp) return false;
-		if (id != other.id) return false;
+		if (!id.equals(other.id)) return false;
 
 		return true;
 	}

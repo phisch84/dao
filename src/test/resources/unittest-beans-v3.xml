@@ -8,5 +8,6 @@
 
     <bean id="MockedDO" class="com.schoste.ddd.infrastructure.dal.v3.models.MockedDO" scope="prototype" />
     <bean id="MockedDAO" class="com.schoste.ddd.infrastructure.dal.v3.services.mocked.MockedDAOImpl" scope="singleton" />
-    <bean id="DataObjectLoader" class="com.schoste.ddd.infrastructure.dal.v3.services.mocked.MockedDataObjectLoaderImpl" scope="prototype" />
+    <bean id="DefaultDataObjectLoader" class="com.schoste.ddd.infrastructure.dal.v3.services.mocked.MockedDefaultDataObjectLoaderImpl" scope="prototype" />
+    <bean id="RecentDataObjectLoader" class="com.schoste.ddd.infrastructure.dal.v3.services.mocked.MockedRecentDataObjectLoaderImpl" scope="prototype" />
 </beans>

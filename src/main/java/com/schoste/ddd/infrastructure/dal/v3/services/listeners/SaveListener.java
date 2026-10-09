@@ -1,5 +1,6 @@
 package com.schoste.ddd.infrastructure.dal.v3.services.listeners;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
@@ -11,7 +12,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
-public interface SaveListener<T extends GenericDataObject>
+public interface SaveListener<ID extends Serializable, T extends GenericDataObject<ID>>
 {
 	/**
 	 * Called by the DAO before saving the dataObjectToSave.

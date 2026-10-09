@@ -2,23 +2,27 @@ package com.schoste.ddd.infrastructure.dal.v3.services.listeners;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
+import com.schoste.ddd.infrastructure.dal.v3.services.DataObjectLoader;
 
 /**
  * Mocked implementation of a get listener for unit testing
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */
-public class MockedGetListener<T extends GenericDataObject> implements GetListener<T>
+public class MockedGetListener<DO extends GenericDataObject<Integer>> implements GetListener<Integer, DO>
 {
 	protected Collection<Integer> idsReceivedBeforeGetting = new ArrayList<>();
-	protected Collection<T> dosReceivedAfterGetting = new ArrayList<T>();
+	protected Collection<DO> dosReceivedAfterGetting = new ArrayList<>();
+	protected Collection<DataObjectLoader<?, Integer, DO>> dolsReceivedBeforeGetting = new HashSet<>();
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public int onBeforeGet(int id)
+	public Integer onBeforeGet(Integer id)
 	{
 		this.idsReceivedBeforeGetting.add(id);
 
@@ -29,7 +33,7 @@ public class MockedGetListener<T extends GenericDataObject> implements GetListen
 	 * {@inheritDoc}
 	 */
 	@Override
-	public int[] onBeforeGet(int[] ids)
+	public Integer[] onBeforeGet(Integer[] ids)
 	{
 		if (ids == null) return null;
 
@@ -42,18 +46,23 @@ public class MockedGetListener<T extends GenericDataObject> implements GetListen
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onAfterGet(T dataObject)
+	public void onBeforeGet(DataObjectLoader<?, Integer, DO> dataObjLoader)
 	{
-		this.dosReceivedAfterGetting.add(dataObject);
+		this.dolsReceivedBeforeGetting.add(dataObjLoader);
+		this.idsReceivedBeforeGetting.add(null);
+
+		return;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onAfterGet(Collection<T> dataObjects)
+	public DO onAfterGet(DO dataObject)
 	{
-		for (T dataObject : dataObjects) this.dosReceivedAfterGetting.add(dataObject);
+		this.dosReceivedAfterGetting.add(dataObject);
+
+		return dataObject;
 	}
 
 	/**
@@ -67,11 +76,21 @@ public class MockedGetListener<T extends GenericDataObject> implements GetListen
 	}
 
 	/**
+	 * Gets all data object loaders received before any data objects have been loaded
+	 * 
+	 * @return a collection of data objects
+	 */
+	public Collection<DataObjectLoader<?, Integer, DO>> getDOLsReceivedBeforeGetting()
+	{
+		return this.dolsReceivedBeforeGetting;
+	}
+
+	/**
 	 * Gets all data objects received after they were gotten
 	 * 
 	 * @return a collection of data objects
 	 */
-	public Collection<T> getDOsReceivedAfterGetting()
+	public Collection<DO> getDOsReceivedAfterGetting()
 	{
 		return this.dosReceivedAfterGetting;
 	}

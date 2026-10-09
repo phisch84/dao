@@ -1,5 +1,6 @@
 package com.schoste.ddd.infrastructure.dal.v3.services.listeners;
 
+import java.io.Serializable;
 import java.util.Collection;
 
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
@@ -11,7 +12,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
-public interface DeleteListener<T extends GenericDataObject>
+public interface DeleteListener<ID extends Serializable, T extends GenericDataObject<ID>>
 {
 	/**
 	 * Called by the DAO before deleting the dataObjectToSave.
@@ -43,7 +44,7 @@ public interface DeleteListener<T extends GenericDataObject>
 	 * @param dataObjectIdsToDelete an array of ids of data objects to delete
 	 * @return an array of ids of data objects to actually delete
 	 */
-	int[] onBeforeDeleting(int[] dataObjectIdsToDelete);
+	ID[] onBeforeDeleting(ID[] dataObjectIdsToDelete);
 
 	/**
 	 * Called by the DAO after the DO was successfully deleted.
@@ -64,5 +65,5 @@ public interface DeleteListener<T extends GenericDataObject>
 	 * 
 	 * @param dataObjectIdsDeleted an array of DO ids that were deleted in the firing call
 	 */
-	void onAfterDeleted(int[] dataObjectIdsDeleted);
+	void onAfterDeleted(ID[] dataObjectIdsDeleted);
 }

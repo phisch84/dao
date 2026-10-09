@@ -1,12 +1,13 @@
 package com.schoste.ddd.infrastructure.dal.v3.models;
 
 /**
- * Example data object used in unit testing of the {@link MockedDAOImpl} implementation
+ * Example data object used in unit testing of the {@link MockedDAOImpl} implementation.
+ * Uses an {@link Integer} as identifier {@link GenericDataObject#getId()}.
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
-public class MockedDO  extends GenericDataObject
+public class MockedDO  extends GenericDataObject<Integer>
 {
 	private static final long serialVersionUID = 6293303128845439392L;
 

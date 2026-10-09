@@ -1,14 +1,13 @@
 package com.schoste.ddd.infrastructure.dal.v3.services;
 
+import java.io.Serializable;
 import java.util.Collection;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.DeleteListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
-import com.schoste.ddd.infrastructure.dal.v3.services.listeners.ReloadListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
 
 /**
@@ -17,68 +16,128 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
  * 
  * @author Philipp Schosteritsch
  *
- * @param <T> any data object that extends the GenericDataObject class
+ * @param <ID> (Identifier) any data type / class that represents the unique identifier of the data object in the underlying storage
+ * @param <DO> (DataObject) any data object that extends the GenericDataObject class
  */
-public interface GenericDataAccessObject<T extends GenericDataObject>
+public interface GenericDataAccessObject<ID extends Serializable, DO extends GenericDataObject<ID>>
 {
 	/**
-	 * Creates a new data object
+	 * Gets the nano-second unix time stamp of the most recent modification time/date
+	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
 	 * 
+	 * @return the latest modification time stamp of data objects from the underlying data storage
+	 */
+	public long getLastModifiedTimeStamp();
+
+	/**
+	 * Override the nano-second unix time stamp of the most recent modification time/date of data objects
+	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
+	 * The time stamp is usually tracked by the DAO and updated when {@link GenericDataAccessObject#getRecent(long, boolean)} is called.
+	 * 
+	 * @param newTS the value to overwrite the internal most recent modification time/date of data objects
+	 */
+	public void setLastModifiedTimeStamp(long newTS);
+
+	/**
+	 * Creates a new data object.
+	 * What the created data object actually looks like depends on the actual implementation.
+	 * As a standard, the newly created data object is supposed to have a virtual identifier, so that
+	 * {@link GenericDataAccessObject#isVirtualId(Serializable)} for {@link GenericDataObject#getId()}
+	 * of a newly created data object is true.
+	 * 
+	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
 	 * @return an instance to a new data object
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	T createDataObject() throws DALException;
+	DO createDataObject(Object... args) throws DALException;
+
+	/**
+	 * Determines if the provided identifier is a virtual indentifier.
+	 * Virtual identifiers mark data objects as not-persisted (yet) in the underlying storage
+	 * 
+	 * @param id the id to test
+	 * @return true if the id is a virtual identifier, false otherwise (it may be an actual identifier but it isn't guaranteed)
+	 */
+	public boolean isVirtualId(ID id);
 
 	/**
 	 * Gets a data object from the data source by its id.
-	 * This method also returns deleted data objects.
+	 * This method also returns data objects flagged deleted (if returned by the storage)
+	 * or object that were created or modified after the last recorded modification.
+	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
 	 * 
 	 * @param id the identifier of the data object
 	 * @return the data object with the given id or null if none was found
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	public T get(int id) throws DALException;
+	public DO get(ID id) throws DALException;
 
 	/**
 	 * Gets all data objects from the data source by its ids.
-	 * This method also returns data objects flagged deleted (if returned by the storage).
+	 * This method also returns data objects flagged deleted (if returned by the storage)
+	 * or object that were created or modified after the last recorded modification.
+	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
 	 * 
-	 * @param ids the identifiers of the data objects
-	 * @return a collection data objects with the given ids. If the id was not found, the data objects is not included in the list.
+	 * @param ids the identifiers of the data objects as array
+	 * @return a stream data objects with the given ids. If the id was not found, the data objects is not included in the list.
 	 * @throws IllegalArgumentException thrown if parameter ids is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	Collection<T> get(int[] ids) throws IllegalArgumentException, DALException;
+	public Stream<DO> get(ID[] ids) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Gets all not deleted data objects from the underlying data source
-	 * which's modification time stamp is greater than the last saved
-	 * modification time stamp
+	 * Gets all data objects from the data source by its ids.
+	 * This method also returns data objects flagged deleted (if returned by the storage)
+	 * or object that were created or modified after the last recorded modification.
+	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
 	 * 
-	 * @return a collection of data objects
+	 * @param ids the identifiers of the data objects as collection
+	 * @return a stream data objects with the given ids. If the id was not found, the data objects is not included in the list.
+	 * @throws IllegalArgumentException thrown if parameter ids is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	public Collection<T> getAll() throws DALException;
+	public Stream<DO> get(Collection<ID> ids) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Lazily loads data object from the underlying data source and matches them against a given filter (if provided).
-	 * All objects that are returned by the internal sourcing method (defined in the implementation of {@link LazyLoader}) are loaded.
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
 	 * Whether time staps are updated in the DAO, or whether its listeners are notified also depends on the implementation of the interface
 	 * 
-	 * @param filterPredicate if not null, then this filter predicate will be applied on each loaded data object before it is considered to be added to the result stream
-	 * @return a stream of data objects which passed a given filter (if provided)
+	 * @return a stream of data objects
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	public Stream<T> getAll(Predicate<? super T> filterPredicate) throws DALException;
+	public Stream<DO> getAll() throws DALException;
 
 	/**
-	 * Resets the modification time stamp and gets all not deleted data objects
-	 * from the underlying data source
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * Only data objects which have {@link GenericDataObject#getIsDeleted()} == false, and
+	 * {@link GenericDataObject#getCreatedTimeStamp()} or {@link GenericDataObject#getModifiedTimeStamp()} smaller than {@link GenericDataAccessObject#getLastModifiedTimeStamp()}
+	 * will be in the stream.
 	 * 
-	 * @return a collection of data objects
+	 * @return a stream of data objects
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	public Collection<T> reloadAll() throws DALException;
+	public Stream<DO> getRecent() throws DALException;
+
+	/**
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * Only data objects which have {@link GenericDataObject#getCreatedTimeStamp()} or {@link GenericDataObject#getModifiedTimeStamp()}
+	 * smaller than {@link GenericDataAccessObject#getLastModifiedTimeStamp()} will be in the stream.
+	 * 
+	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) will also be returned
+	 * @return a stream of data objects
+	 * @throws DALException re-throws every exception as DAL exception
+	 */
+	public Stream<DO> getRecent(boolean returnDeleted) throws DALException;
+
+	/**
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * 
+	 * @param lastModTS the value to overwrite the internal most recent modification time/date of data objects for this call
+	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) will also be returned
+	 * @return a stream of data objects
+	 * @throws DALException re-throws every exception as DAL exception
+	 */
+	public Stream<DO> getRecent(long lastModTS, boolean returnDeleted) throws DALException;
 
 	/**
 	 * Persists any changes to a data object to the underlying data source
@@ -87,7 +146,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	public void save(T dataObject) throws IllegalArgumentException, DALException;
+	public void save(DO dataObject) throws IllegalArgumentException, DALException;
 	
 	/**
 	 * Persists any changes to a data object to the underlying data source
@@ -105,7 +164,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	void save(Collection<T> dataObjects) throws IllegalArgumentException, DALException;
+	public void save(Collection<DO> dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
 	 * Persists any changes to the given data objects to the underlying data source
@@ -114,7 +173,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or one element is an instance of an incompatible class
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	void save(GenericDataObject[] dataObjects) throws IllegalArgumentException, DALException;
+	public void save(GenericDataObject<ID>[] dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
 	 * Flags a data object as deleted and persists it to the underlying data source
@@ -123,7 +182,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	public void delete(T dataObject) throws IllegalArgumentException, DALException;
+	public void delete(DO dataObject) throws IllegalArgumentException, DALException;
 	
 	/**
 	 * Flags a data object as deleted and persists it to the underlying data source
@@ -137,20 +196,29 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	/**
 	 * Flags the given data objects as deleted and persists them to the underlying data source
 	 * 
-	 * @param dataObjects the data objects to delete
+	 * @param dataObjects the data objects to delete as array
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	void delete(Collection<T> dataObjects) throws IllegalArgumentException, DALException;
+	public void delete(DO[] dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
 	 * Flags the given data objects as deleted and persists them to the underlying data source
 	 * 
-	 * @param dataObjects the data objects to delete
-	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or one element is an instance of an incompatible class
+	 * @param dataObjects the data objects to delete as collection
+	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	void delete(GenericDataObject[] dataObjects) throws IllegalArgumentException, DALException;
+	public void delete(Collection<DO> dataObjects) throws IllegalArgumentException, DALException;
+
+	/**
+	 * Deletes the data object with the given id
+	 * 
+	 * @param dataObjectId the id of the data object to delete
+	 * @throws IllegalArgumentException thrown if parameter dataObjectIds is null
+	 * @throws DALException re-throws every exception as DAL exception
+	 */
+	public void delete(ID dataObjectId) throws IllegalArgumentException, DALException;
 
 	/**
 	 * Deletes the data objects with given ids
@@ -159,7 +227,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @throws IllegalArgumentException thrown if parameter dataObjectIds is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
-	void delete(int[] dataObjectIds) throws IllegalArgumentException, DALException;
+	public void delete(ID[] dataObjectIds) throws IllegalArgumentException, DALException;
 
 	/**
 	 * Resets the data access object and clears the underlying storage if supported
@@ -174,7 +242,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @param listener the instance of the listener to register
 	 * @throws IllegalArgumentException thrown if parameter listener is null
 	 */
-	void registerOnGetListener(GetListener<T> listener) throws IllegalArgumentException;
+	public void registerOnGetListener(GetListener<ID, DO> listener) throws IllegalArgumentException;
 
 	/**
 	 * Unregisters a listener so it will not be called before getting DOs and after DOs were loaded.
@@ -182,14 +250,14 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @param listener the instance of the listener to unregister
 	 * @throws IllegalArgumentException thrown if parameter listener is null
 	 */
-	void unregisterOnGetListener(GetListener<T> listener) throws IllegalArgumentException;
+	public void unregisterOnGetListener(GetListener<ID, DO> listener) throws IllegalArgumentException;
 
 	/**
 	 * Gets a copy of the collection of all registered listeners which will be called before getting DOs and after DOs were loaded.
 	 * 
 	 * @return a collection of {@link GetListener}
 	 */
-	Collection<GetListener<T>> getOnGetListeners();
+	public Collection<GetListener<ID, DO>> getOnGetListeners();
 
 	/**
 	 * Registers a new listener which will be called before saving DOs and after DOs were saved.
@@ -197,7 +265,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @param listener the instance of the listener to register
 	 * @throws IllegalArgumentException thrown if parameter listener is null
 	 */
-	void registerOnSaveListener(SaveListener<T> listener) throws IllegalArgumentException;
+	public void registerOnSaveListener(SaveListener<ID, DO> listener) throws IllegalArgumentException;
 
 	/**
 	 * Unregisters a listener so it will not be called before saving DOs and after DOs were saved.
@@ -205,14 +273,14 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @param listener the instance of the listener to unregister
 	 * @throws IllegalArgumentException thrown if parameter listener is null
 	 */
-	void unregisterOnSaveListener(SaveListener<T> listener) throws IllegalArgumentException;
+	public void unregisterOnSaveListener(SaveListener<ID, DO> listener) throws IllegalArgumentException;
 
 	/**
 	 * Gets a copy of the collection of all registered listeners which will be called before saving DOs and after DOs were saved.
 	 * 
 	 * @return a collection of {@link SaveListener}
 	 */
-	Collection<SaveListener<T>> getOnSaveListeners();
+	public Collection<SaveListener<ID, DO>> getOnSaveListeners();
 
 	/**
 	 * Registers a new listener which will be called before deleting DOs and after DOs were deleted.
@@ -220,7 +288,7 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @param listener the instance of the listener to register
 	 * @throws IllegalArgumentException thrown if parameter listener is null
 	 */
-	void registerOnDeleteListener(DeleteListener<T> listener) throws IllegalArgumentException;
+	public void registerOnDeleteListener(DeleteListener<ID, DO> listener) throws IllegalArgumentException;
 
 	/**
 	 * Unregisters a listener so it will not be called before deleting DOs and after DOs were deleted.
@@ -228,35 +296,12 @@ public interface GenericDataAccessObject<T extends GenericDataObject>
 	 * @param listener the instance of the listener to unregister
 	 * @throws IllegalArgumentException thrown if parameter listener is null
 	 */
-	void unregisterOnDeleteListener(DeleteListener<T> listener) throws IllegalArgumentException;
+	public void unregisterOnDeleteListener(DeleteListener<ID, DO> listener) throws IllegalArgumentException;
 
 	/**
 	 * Gets a copy of the collection of all registered listeners which will be called before deleting DOs and after DOs were deleted.
 	 * 
 	 * @return a collection of {@link DeleteListener}
 	 */
-	Collection<DeleteListener<T>> getOnDeleteListeners();
-
-	/**
-	 * Registers a new listener which will be called before reloading DOs and after DOs were reloaded.
-	 * 
-	 * @param listener the instance of the listener to register
-	 * @throws IllegalArgumentException thrown if parameter listener is null
-	 */
-	void registerOnReloadListener(ReloadListener<T> listener) throws IllegalArgumentException;
-
-	/**
-	 * Unregisters a listener so it will not be called before reloading DOs and after DOs were reloaded.
-	 * 
-	 * @param listener the instance of the listener to unregister
-	 * @throws IllegalArgumentException thrown if parameter listener is null
-	 */
-	void unregisterOnReloadListener(ReloadListener<T> listener) throws IllegalArgumentException;
-
-	/**
-	 * Gets a copy of the collection of all registered listeners which will be called before reloading DOs and after DOs were reloaded.
-	 * 
-	 * @return a collection of {@link DeleteListener}
-	 */
-	Collection<ReloadListener<T>> getOnReloadListeners();
+	public Collection<DeleteListener<ID, DO>> getOnDeleteListeners();
 }

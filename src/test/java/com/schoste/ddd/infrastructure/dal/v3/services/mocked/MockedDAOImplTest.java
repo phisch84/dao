@@ -11,15 +11,14 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.schoste.ddd.infrastructure.dal.v3.models.MockedDO;
+import com.schoste.ddd.infrastructure.dal.v3.services.DataObjectLoader;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDAOTest;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataAccessObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.DeleteListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.MockedDeleteListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.MockedGetListener;
-import com.schoste.ddd.infrastructure.dal.v3.services.listeners.MockedReloadListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.MockedSaveListener;
-import com.schoste.ddd.infrastructure.dal.v3.services.listeners.ReloadListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
 
 /**
@@ -27,9 +26,9 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */
-@ContextConfiguration(locations = { "file:src/test/resources/unittest-beans-v2.xml" })
+@ContextConfiguration(locations = { "file:src/test/resources/unittest-beans-v3.xml" })
 @RunWith(SpringJUnit4ClassRunner.class)
-public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
+public class MockedDAOImplTest extends GenericDAOTest<Integer, MockedDO, MockedDAOImpl>
 {
 	@Autowired
 	protected MockedDAOImpl mockedDAOImpl;
@@ -41,16 +40,16 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	public void createDataObjects() throws Exception
 	{
 		this.getDataAccessObject().clear();
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll1"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll2"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll3"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll4"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll5"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll6"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll7"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll8"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll9"));
-		this.getDataAccessObject().save(this.createDataObject(0, "testGetAll10"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before01"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before02"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before03"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before04"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before05"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before06"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before07"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before08"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before09"));
+		this.getDataAccessObject().save(this.createDataObject(0, "@Before10"));
 		this.getDataAccessObject().save(this.createDataObject(1, "testSaveExisting"));
 	}
 
@@ -63,32 +62,25 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@Before
 	public void registerListeners() throws Exception
 	{
-		GetListener<MockedDO> getListener = new MockedGetListener<MockedDO>();
+		GetListener<Integer, MockedDO> getListener = new MockedGetListener<MockedDO>();
 
 		this.getDataAccessObject().registerOnGetListener(getListener);
 
 		Assert.assertEquals(1, this.getDataAccessObject().getOnGetListeners().size());
 
 
-		SaveListener<MockedDO> saveListener = new MockedSaveListener<MockedDO>();
+		SaveListener<Integer, MockedDO> saveListener = new MockedSaveListener<MockedDO>();
 
 		this.getDataAccessObject().registerOnSaveListener(saveListener);
 
 		Assert.assertEquals(1, this.getDataAccessObject().getOnSaveListeners().size());
 
 
-		DeleteListener<MockedDO> deleteListener = new MockedDeleteListener<MockedDO>();
+		DeleteListener<Integer, MockedDO> deleteListener = new MockedDeleteListener<MockedDO>();
 
 		this.getDataAccessObject().registerOnDeleteListener(deleteListener);
 
 		Assert.assertEquals(1, this.getDataAccessObject().getOnDeleteListeners().size());
-
-
-		ReloadListener<MockedDO> reloadListener = new MockedReloadListener<MockedDO>();
-
-		this.getDataAccessObject().registerOnReloadListener(reloadListener);
-
-		Assert.assertEquals(1, this.getDataAccessObject().getOnReloadListeners().size());
 	}
 
 	/**
@@ -100,32 +92,25 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@After
 	public void clearListeners() throws Exception
 	{
-		Collection<GetListener<MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
+		Collection<GetListener<Integer, MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
 		
-		for (GetListener<MockedDO> getListener : getListeners) this.getDataAccessObject().unregisterOnGetListener(getListener);
+		for (GetListener<Integer, MockedDO> getListener : getListeners) this.getDataAccessObject().unregisterOnGetListener(getListener);
 
 		Assert.assertEquals(0, this.getDataAccessObject().getOnGetListeners().size());
 
 
-		Collection<SaveListener<MockedDO>> saveListeners = this.getDataAccessObject().getOnSaveListeners();
+		Collection<SaveListener<Integer, MockedDO>> saveListeners = this.getDataAccessObject().getOnSaveListeners();
 		
-		for (SaveListener<MockedDO> saveListener : saveListeners) this.getDataAccessObject().unregisterOnSaveListener(saveListener);
+		for (SaveListener<Integer, MockedDO> saveListener : saveListeners) this.getDataAccessObject().unregisterOnSaveListener(saveListener);
 
 		Assert.assertEquals(0, this.getDataAccessObject().getOnSaveListeners().size());
 
 
-		Collection<DeleteListener<MockedDO>> deleteListeners = this.getDataAccessObject().getOnDeleteListeners();
+		Collection<DeleteListener<Integer, MockedDO>> deleteListeners = this.getDataAccessObject().getOnDeleteListeners();
 		
-		for (DeleteListener<MockedDO> deleteListener : deleteListeners) this.getDataAccessObject().unregisterOnDeleteListener(deleteListener);
+		for (DeleteListener<Integer, MockedDO> deleteListener : deleteListeners) this.getDataAccessObject().unregisterOnDeleteListener(deleteListener);
 
 		Assert.assertEquals(0, this.getDataAccessObject().getOnDeleteListeners().size());
-
-
-		Collection<ReloadListener<MockedDO>> reloadListeners = this.getDataAccessObject().getOnReloadListeners();
-		
-		for (ReloadListener<MockedDO> deleteListener : reloadListeners) this.getDataAccessObject().unregisterOnReloadListener(deleteListener);
-
-		Assert.assertEquals(0, this.getDataAccessObject().getOnReloadListeners().size());
 	}
 
 	/**
@@ -134,9 +119,9 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@Override
 	protected boolean assertDefaultGetListenersBeforeGet(int numOfexpectedDOs)
 	{
-		Collection<GetListener<MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
+		Collection<GetListener<Integer, MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
 		
-		for (GetListener<MockedDO> getListener : getListeners)
+		for (GetListener<Integer, MockedDO> getListener : getListeners)
 		{
 			MockedGetListener<MockedDO> mockedGetListener = (MockedGetListener<MockedDO>) getListener;
 
@@ -150,11 +135,29 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	 * {@inheritDoc}
 	 */
 	@Override
+	protected boolean assertDefaultGetListenersDOLsBeforeGet(int numOfexpectedDOLs)
+	{
+		Collection<GetListener<Integer, MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
+		
+		for (GetListener<Integer, MockedDO> getListener : getListeners)
+		{
+			MockedGetListener<MockedDO> mockedGetListener = (MockedGetListener<MockedDO>) getListener;
+
+			if ((mockedGetListener).getDOLsReceivedBeforeGetting().size() != numOfexpectedDOLs) return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	protected boolean assertDefaultGetListenersAfterGet(int numOfexpectedDOs)
 	{
-		Collection<GetListener<MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
+		Collection<GetListener<Integer, MockedDO>> getListeners = this.getDataAccessObject().getOnGetListeners();
 		
-		for (GetListener<MockedDO> getListener : getListeners)
+		for (GetListener<Integer, MockedDO> getListener : getListeners)
 		{
 			MockedGetListener<MockedDO> mockedGetListener = (MockedGetListener<MockedDO>) getListener;
 
@@ -170,9 +173,9 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@Override
 	protected boolean assertDefaultSaveListenersBeforeSave(int numOfexpectedDOs)
 	{
-		Collection<SaveListener<MockedDO>> saveListeners = this.getDataAccessObject().getOnSaveListeners();
+		Collection<SaveListener<Integer, MockedDO>> saveListeners = this.getDataAccessObject().getOnSaveListeners();
 		
-		for (SaveListener<MockedDO> saveListener : saveListeners)
+		for (SaveListener<Integer, MockedDO> saveListener : saveListeners)
 		{
 			MockedSaveListener<MockedDO> mockedSaveListener = (MockedSaveListener<MockedDO>) saveListener;
 
@@ -188,9 +191,9 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@Override
 	protected boolean assertDefaultSaveListenersAfterSave(int numOfexpectedDOs)
 	{
-		Collection<SaveListener<MockedDO>> saveListeners = this.getDataAccessObject().getOnSaveListeners();
+		Collection<SaveListener<Integer, MockedDO>> saveListeners = this.getDataAccessObject().getOnSaveListeners();
 		
-		for (SaveListener<MockedDO> saveListener : saveListeners)
+		for (SaveListener<Integer, MockedDO> saveListener : saveListeners)
 		{
 			MockedSaveListener<MockedDO> mockedSaveListener = (MockedSaveListener<MockedDO>) saveListener;
 
@@ -206,9 +209,9 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@Override
 	protected boolean assertDefaultDeleteListenersBeforeDelete(int numOfexpectedDOs)
 	{
-		Collection<DeleteListener<MockedDO>> deleteListeners = this.getDataAccessObject().getOnDeleteListeners();
+		Collection<DeleteListener<Integer, MockedDO>> deleteListeners = this.getDataAccessObject().getOnDeleteListeners();
 		
-		for (DeleteListener<MockedDO> deleteListener : deleteListeners)
+		for (DeleteListener<Integer, MockedDO> deleteListener : deleteListeners)
 		{
 			MockedDeleteListener<MockedDO> mockedSaveListener = (MockedDeleteListener<MockedDO>) deleteListener;
 
@@ -224,31 +227,13 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	@Override
 	protected boolean assertDefaultDeleteListenersAfterDelete(int numOfexpectedDOs)
 	{
-		Collection<DeleteListener<MockedDO>> deleteListeners = this.getDataAccessObject().getOnDeleteListeners();
+		Collection<DeleteListener<Integer, MockedDO>> deleteListeners = this.getDataAccessObject().getOnDeleteListeners();
 		
-		for (DeleteListener<MockedDO> deleteListener : deleteListeners)
+		for (DeleteListener<Integer, MockedDO> deleteListener : deleteListeners)
 		{
 			MockedDeleteListener<MockedDO> mockedDeleteListener = (MockedDeleteListener<MockedDO>) deleteListener;
 
 			if ((mockedDeleteListener).getDOsReceivedAfterDeleting().size() != numOfexpectedDOs) return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected boolean assertDefaultReloadListenersAfterReload(int numOfexpectedDOs)
-	{
-		Collection<ReloadListener<MockedDO>> reloadListeners = this.getDataAccessObject().getOnReloadListeners();
-		
-		for (ReloadListener<MockedDO> reloadListener : reloadListeners)
-		{
-			MockedReloadListener<MockedDO> mockedReloadListener = (MockedReloadListener<MockedDO>) reloadListener;
-
-			if ((mockedReloadListener).getDOsReceivedAfterReloading().size() != numOfexpectedDOs) return false;
 		}
 
 		return true;
@@ -267,7 +252,7 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected MockedDO createDataObject(Object... parameters) 
+	protected MockedDO createDataObject(Object... parameters) throws Exception
 	{
 		MockedDO dataObject = this.mockedDAOImpl.createDataObject();
 		
@@ -309,6 +294,15 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override 
+	protected Integer getNotExistingId()
+	{
+		return 9999;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	protected MockedDO getExistingDataObject(int id)
 	{
@@ -335,6 +329,6 @@ public class MockedDAOImplTest extends GenericDAOTest<MockedDO, MockedDAOImpl>
 		this.getDataAccessObject().save(dataObject);
 		this.getDataAccessObject().clear();
 		
-		return (this.getDataAccessObject().reloadAll().size() == 0);
+		return (this.getDataAccessObject().getRecent().toList().size() == 0);
 	}
 }

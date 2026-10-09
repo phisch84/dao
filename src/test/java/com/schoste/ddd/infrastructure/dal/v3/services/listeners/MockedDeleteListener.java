@@ -12,7 +12,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */
-public class MockedDeleteListener<T extends GenericDataObject> implements DeleteListener<T>
+public class MockedDeleteListener<T extends GenericDataObject<Integer>> implements DeleteListener<Integer, T>
 {
 	protected Collection<T> dosReceivedBeforeDeleting = new ArrayList<T>();
 	protected Set<T> dosReceivedAfterDeleting = new HashSet<T>();
@@ -48,7 +48,7 @@ public class MockedDeleteListener<T extends GenericDataObject> implements Delete
 	 * {@inheritDoc}
 	 */
 	@Override
-	public int[] onBeforeDeleting(int[] dataObjectIdsToDelete)
+	public Integer[] onBeforeDeleting(Integer[] dataObjectIdsToDelete)
 	{
 		for (int dataObjectIdToDelete : dataObjectIdsToDelete) this.idsReceivedBeforeDeleting.add(dataObjectIdToDelete);
 
@@ -77,7 +77,7 @@ public class MockedDeleteListener<T extends GenericDataObject> implements Delete
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onAfterDeleted(int[] dataObjectIdsDeleted)
+	public void onAfterDeleted(Integer[] dataObjectIdsDeleted)
 	{
 		for (int dataObjectIdDeleted : dataObjectIdsDeleted) this.idsReceivedAfterDeleting.add(dataObjectIdDeleted);
 	}

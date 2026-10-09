@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDAO;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
-import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataAccessObject;
 
 /**
  * Mocking implementation of the GenericDataAccessObject interface.
@@ -22,10 +22,10 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataAccessObject;
  *
  * @param <T> the type of the data object (DO) to access
  */
-public abstract class GenericMockedDAO<T extends GenericDataObject> extends GenericDAO<T> implements GenericDataAccessObject<T> 
+public abstract class GenericMockedDAO<T extends GenericDataObject<Integer>> extends GenericDAO<Integer, T>
 {
 	protected Map<Integer, T> dataObjects = new HashMap<Integer, T>();
-	
+	protected Iterator<Integer> itDataObjectIds = null;
 	protected int lastDataObjectId = 0;
 	
 	/**
@@ -42,14 +42,30 @@ public abstract class GenericMockedDAO<T extends GenericDataObject> extends Gene
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected synchronized T doGet(int id) throws Exception
+	protected synchronized T doGet(Integer id) throws Exception
 	{
-		if (!this.dataObjects.containsKey(id)) return null;
-		
-		return this.dataObjects.get(id);
+		if (this.isVirtualId(id))
+		{
+			if (this.itDataObjectIds == null) this.itDataObjectIds = this.dataObjects.keySet().iterator();
+			if (!this.itDataObjectIds.hasNext())
+			{
+				this.itDataObjectIds = null;
+
+				return null;
+			}
+
+			Integer doID = this.itDataObjectIds.next();
+
+			if (this.dataObjects.containsKey(doID)) return this.dataObjects.get(doID);
+			else return null;
+		}
+
+		if (this.dataObjects.containsKey(id)) return this.dataObjects.get(id);
+
+		return null;
 	}
 
-	protected Collection<T> getSomeDOs(int[] ids) throws Exception
+	protected Collection<T> getSomeDOs(Integer[] ids) throws Exception
 	{
 		Collection<T> dataObjects = this.dataObjects.values();
 		Collection<T> found = new ArrayList<T>(ids.length);
@@ -89,27 +105,11 @@ public abstract class GenericMockedDAO<T extends GenericDataObject> extends Gene
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected synchronized Collection<T> doGet(int[] ids) throws Exception
-	{
-		if (ids != null) return this.getSomeDOs(ids);
-		else return this.getAllDOs();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	protected synchronized void doSave(T dataObject) throws Exception
 	{
-		if (dataObject.getId() < 1)
-		{
-			dataObject.setId(++this.lastDataObjectId);
-			dataObject.setCreatedTimeStamp(System.currentTimeMillis());			
-		}
+		if (dataObject.getId() < 1) dataObject.setId(++this.lastDataObjectId);
 
 		this.dataObjects.put(dataObject.getId(), dataObject);
-
-		dataObject.updateTimeStamps();
 	}
 
 	/**
@@ -145,9 +145,14 @@ public abstract class GenericMockedDAO<T extends GenericDataObject> extends Gene
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected synchronized void doDelete(int[] dataObjectIds) throws Exception
+	protected synchronized void doDelete(Integer[] dataObjectIds) throws Exception
 	{
-		for (int dataObjectId : dataObjectIds) this.dataObjects.remove(dataObjectId);
+		for (int dataObjectId : dataObjectIds) 
+		{
+			T dataObj = this.dataObjects.remove(dataObjectId);
+
+			if (dataObj != null) dataObj.setIsDeleted(true);
+		}
 	}
 
 	/**

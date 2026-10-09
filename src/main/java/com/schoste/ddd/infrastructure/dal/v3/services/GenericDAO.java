@@ -1,11 +1,14 @@
 package com.schoste.ddd.infrastructure.dal.v3.services;
 
+import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.function.Predicate;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -13,7 +16,6 @@ import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.DeleteListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
-import com.schoste.ddd.infrastructure.dal.v3.services.listeners.ReloadListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
 
 /**
@@ -21,15 +23,25 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
  * 
  * @author Philipp Schosteritsch
  *
- * @param <T> the class of the data object to persist
+ * @param <DO> the class of the data object to persist
  */
-public abstract class GenericDAO <T extends GenericDataObject> implements GenericDataAccessObject<T> 
+public abstract class GenericDAO <ID extends Serializable, DO extends GenericDataObject<ID>> implements GenericDataAccessObject<ID, DO> 
 {
 	protected long latestModificationTimeStamp = Long.MIN_VALUE;
-	protected HashSet<GetListener<T>> onGetListeners = new HashSet<>();
-	protected HashSet<SaveListener<T>> onSaveListeners = new HashSet<>();
-	protected HashSet<DeleteListener<T>> onDeleteListeners = new HashSet<>();
-	protected HashSet<ReloadListener<T>> onReloadListeners = new HashSet<>();
+	protected Function<?, DO> defaultSRtoDOConversionFn = srId -> this.safeDoGet(srId);
+	protected HashSet<GetListener<ID, DO>> onGetListeners = new HashSet<>();
+	protected HashSet<SaveListener<ID, DO>> onSaveListeners = new HashSet<>();
+	protected HashSet<DeleteListener<ID, DO>> onDeleteListeners = new HashSet<>();
+
+	/**
+	 * The method that actually creates a data object and needs to be implemented by its deriving class.
+	 * Consider implementing the method synchronized for thread safety.
+	 * 
+	 * @param args optional arguments for creating the DO
+	 * @return a new instance of the DO
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract DO doCreateDataObject(Object... args) throws Exception;
 
 	/**
 	 * The method that actually gets a data object and needs to be implemented by its deriving class.
@@ -39,17 +51,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @return the data object with the given id or null if not found
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract T doGet(int id) throws Exception;
-	
-	/**
-	 * The method that actually gets data objects and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param ids the ids of the data objects to get
-	 * @return a list of the data objects with the given ids.
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract Collection<T> doGet(int[] ids) throws Exception;
+	protected abstract DO doGet(ID id) throws Exception;
 
 	/**
 	 * The method to actually save the data object and needs to be implemented by its deriving class.
@@ -58,7 +60,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @param dataObject the data object to save
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract void doSave(T dataObject) throws Exception;
+	protected abstract void doSave(DO dataObject) throws Exception;
 
 	/**
 	 * The method to actually save the data objects and needs to be implemented by its deriving class.
@@ -67,7 +69,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @param dataObjects the data objects to save
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract void doSave(Collection<T> dataObjects) throws Exception;
+	protected abstract void doSave(Collection<DO> dataObjects) throws Exception;
 
 	/**
 	 * The method to actually deletes the data object and needs to be implemented by its deriving class.
@@ -76,7 +78,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @param dataObject the data object to delete
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract void doDelete(T dataObject) throws Exception;
+	protected abstract void doDelete(DO dataObject) throws Exception;
 
 	/**
 	 * The method to actually deletes the data objects and needs to be implemented by its deriving class.
@@ -85,7 +87,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @param dataObjects the data objects to delete
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract void doDelete(Collection<T> dataObjects) throws Exception;
+	protected abstract void doDelete(Collection<DO> dataObjects) throws Exception;
 
 	/**
 	 * The method to actually deletes the data objects with given ids and needs to be implemented by its deriving class.
@@ -94,7 +96,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @param dataObjectIds the ids of the data objects to delete
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract void doDelete(int[] dataObjectIds) throws Exception;
+	protected abstract void doDelete(ID[] dataObjectIds) throws Exception;
 
 	/**
 	 * The method that actually reloads data objects and needs to be implemented by its deriving class.
@@ -103,7 +105,7 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * @return a list of loaded data objects
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract Collection<T> doReloadAll() throws Exception;
+	protected abstract Collection<DO> doReloadAll() throws Exception;
 
 	/**
 	 * Clears the actual storage. This method needs to be implemented by its deriving class.
@@ -115,49 +117,142 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	protected abstract void doClear() throws Exception;
 
 	/**
+	 * Returns a datum that can be used to uniquely identify data objects that haven't been persisted yet.
+	 * 
+	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
+	 * @return a datum that can be used to uniquely identify a data object that hasn't been persisted yet
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract ID getNextVirtualId(Object... args) throws Exception;
+
+	/**
+	 * Returns a datum that uniquely identifis a data objects that exists in the underlying storage.
+	 * 
+	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
+	 * @return a datum that uniquely identifis a data objects that exists in the underlying storage
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract ID getActualId(Object... args) throws Exception;
+
+	/**
 	 * Returns an iterable object that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll(Predicate)}
+	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll()}
 	 * 
 	 * To be overwritten by the extending class.
 	 * 
-	 * @param <T> the class of the data object to load
+	 * @param <ID> the class of the data objects' identifier
+	 * @param <DO> the class of the data object to load
+	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
+	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
+	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
 	 * @return an iterable object that will poll the next available data object from the data source
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract DataObjectLoader<Integer, T> createDOLoader() throws Exception;
+	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, Object... args) throws Exception;
 
 	/**
-	 * {@inheritDoc}
+	 * Returns an iterable object that will poll the next available data object from the data source
+	 * so it can be processed in calls to {@link GenericDataAccessObject#get(Serializable)} and {@link GenericDataAccessObject#get(Serializable[])}
+	 * 
+	 * To be overwritten by the extending class.
+	 * 
+	 * @param <DO> the class of the data object to load
+	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
+	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
+	 * @param ids An array of ids that identify the data objects to load from the underlying storage
+	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
+	 * @return an iterable object that will poll the next available data object from the data source
+	 * @throws Exception re-throws every exception
 	 */
-	@Override
-	public abstract T createDataObject() throws DALException;
+	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, Set<ID> ids, Object... args) throws Exception;
 
 	/**
-	 * Updates the latest modification time stamp (ts) of the DAO to the ts of
-	 * the data object in the provided collection with the greatest (most recent)
-	 * ts in the collection.
+	 * Returns an iterable object that will poll the next available data object from the data source
+	 * so it can be processed in calls to {@link GenericDataAccessObject#getRecent()}.
+	 * The created data loader needs to be capable of filtering data objects out based on if they were flagged deleted
+	 * ({@link GenericDataObject#getIsDeleted() == true) and if they were last modified before the last modification time stamp of the DAO
+	 * ({@link GenericDataObject#getCreatedTimeStamp()} or {@link GenericDataObject#getModifiedTimeStamp()}) <= {@link GenericDataAccessObject#getLastModifiedTimeStamp()})
 	 * 
-	 * @param dataObjects a set of data object to check if one's ts is greater (more recent)
+	 * To be overwritten by the extending class.
+	 * 
+	 * @param <ID> the class of the data objects' identifier
+	 * @param <DO> the class of the data object to load
+	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
+	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
+	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
+	 * @return an iterable object that will poll the next available data object from the data source
+	 * @throws Exception re-throws every exception
 	 */
-	protected synchronized void updateLatestModificationDate(Collection<T> dataObjects)
-	{
-		for (T dataObject : dataObjects) updateLatestModificationDate(dataObject);
-	}
-	
+	protected abstract DataObjectLoader<?,ID,DO> createRecentDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, long lastModTS, boolean skipDeleted, Object... args) throws Exception;
+
 	/**
-	 * Updates the latest modification time stamp (ts) of the DAO to the ts of
-	 * the data object, if the data object's ts is greater (more recent) than the
-	 * ts of the DAO.
+	 * Updates the created and modified time stamp of a data object (DO) by calling its implementation of
+	 * {@link GenericDataObject#updateTimeStamps()}.
 	 * 
-	 * @param dataObject the data object to check if its ts is greater (more recent)
+	 * 1. always updates the modification time stamp of the DO
+	 * 2. if the DO has a virtual id, the created time stamp is also updated as the assumption is that it will be persisted
+	 * 
+	 * @param dataObj the data object to update
 	 */
-	protected synchronized void updateLatestModificationDate(T dataObject)
+	protected synchronized void updateDataObjTimeStamps(DO dataObj)
 	{
-		long doTS = dataObject.getModifiedTimeStamp();
-		
-		if (doTS > this.latestModificationTimeStamp) this.latestModificationTimeStamp = doTS;
+		if (dataObj == null) return;
+
+		dataObj.updateTimeStamps();
 	}
-	
+
+	/**
+	 * Updates the created and modified time stamp of data objects (DOs) by calling the implementation of
+	 * {@link GenericDataObject#updateTimeStamps()}.
+	 * 
+	 * @param dataObjects the data objects to update
+	 */
+	protected synchronized void updateDataObjTimeStamps(Collection<DO> dataObjects)
+	{
+		if (dataObjects == null) return;
+
+		for (DO dataObj : dataObjects) this.updateDataObjTimeStamps(dataObj);
+	}
+
+	/**
+	 * The method that actually gets data objects and needs to be implemented by its deriving class.
+	 * Consider implementing the method synchronized for thread safety.
+	 * 
+	 * @param doLoader the actual data object loader
+	 * @return a stream of the data objects with the given ids.
+	 * @throws Exception re-throws every exception
+	 */
+	protected synchronized Stream<DO> doGet(DataObjectLoader<?, ID, DO> doLoader) throws Exception
+	{
+		Stream<DO> dataObjStream = StreamSupport.stream(doLoader, false);
+				   dataObjStream.onClose(doLoader);
+
+		return dataObjStream;
+	}
+
+	/**
+	 * This method wraps a call to {@link GenericDAO#doGet(Serializable)} in a try-catch block and returns whatever
+	 * {@link GenericDAO#doGet(Serializable)} returns. In case of an exception it simply returns null.
+	 * In this case the returned value shall be discarded.
+	 * 
+	 * @param sourceRecordIdentifier any identifier that indicates the next record to load as data object from the data source
+	 * @return the data object of the source record or null if no source record was found or on error
+	 */
+	@SuppressWarnings("unchecked")
+	protected DO safeDoGet(Object sourceRecordIdentifier)
+	{
+		try
+		{
+			return this.doGet((ID) sourceRecordIdentifier);
+		}
+		catch(Exception ex)
+		{
+			ex.printStackTrace(System.err);
+
+			return null;
+		}
+	}
+
 	/**
 	 * Obtains the actual data class of data objects that derive from GenericDataObject
 	 * 
@@ -174,7 +269,560 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 
 		return (Class) types[0];
 	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public long getLastModifiedTimeStamp()
+	{
+		return this.latestModificationTimeStamp;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void setLastModifiedTimeStamp(long newTS)
+	{
+		this.latestModificationTimeStamp = newTS;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public DO createDataObject(Object... args) throws DALException
+	{
+		try
+		{
+			DO dataObj = this.doCreateDataObject(args);
+			   dataObj.setId(this.getNextVirtualId(args));
+			   dataObj.updateTimeStamps();
+
+			return dataObj;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override 
+	public abstract boolean isVirtualId(ID id);
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized void registerOnGetListener(GetListener<ID, DO> listener) throws IllegalArgumentException
+	{
+		if (listener == null) throw new IllegalArgumentException("listener");
+
+		this.onGetListeners.add(listener);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized void unregisterOnGetListener(GetListener<ID, DO> listener) throws IllegalArgumentException
+	{
+		if (listener == null) throw new IllegalArgumentException("listener");
+
+		this.onGetListeners.remove(listener);		
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized Collection<GetListener<ID, DO>> getOnGetListeners()
+	{
+		return new HashSet<>(this.onGetListeners);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized void registerOnSaveListener(SaveListener<ID, DO> listener) throws IllegalArgumentException
+	{
+		if (listener == null) throw new IllegalArgumentException("listener");
+
+		this.onSaveListeners.add(listener);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized void unregisterOnSaveListener(SaveListener<ID, DO> listener) throws IllegalArgumentException
+	{
+		if (listener == null) throw new IllegalArgumentException("listener");
+
+		this.onSaveListeners.remove(listener);		
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized Collection<SaveListener<ID, DO>> getOnSaveListeners()
+	{
+		return new HashSet<>(this.onSaveListeners);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized void registerOnDeleteListener(DeleteListener<ID, DO> listener) throws IllegalArgumentException
+	{
+		if (listener == null) throw new IllegalArgumentException("listener");
+
+		this.onDeleteListeners.add(listener);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized void unregisterOnDeleteListener(DeleteListener<ID, DO> listener) throws IllegalArgumentException
+	{
+		if (listener == null) throw new IllegalArgumentException("listener");
+
+		this.onDeleteListeners.remove(listener);		
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public synchronized Collection<DeleteListener<ID, DO>> getOnDeleteListeners()
+	{
+		return new HashSet<>(this.onDeleteListeners);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public DO get(ID id) throws DALException 
+	{
+		try
+		{
+			ID actualId = id;
+			
+			// raise the event in the get-listeners for the requested id
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners) actualId = onGetListener.onBeforeGet(actualId);
+
+			DO dataObject = this.doGet(actualId);
+
+			// raise the event in the get-listeners for the loaded data object (after it was loaded)
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners) onGetListener.onAfterGet(dataObject);
+
+			return dataObject;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Stream<DO> get(ID[] ids) throws IllegalArgumentException, DALException
+	{
+		if (ids == null) throw new IllegalArgumentException("ids");
+
+		try
+		{
+			ID[] actualIds = ids;
+			Set<ID> filterInIds = new HashSet<>(ids.length);
+			
+			// raise the event in the get-listeners for the ids that are about to be retrieved
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners)
+			{
+				actualIds = onGetListener.onBeforeGet(actualIds);
+
+				if (actualIds == null) return this.getAll();
+			}
+
+			for (ID actualId : actualIds) filterInIds.add(actualId);
+
+			DataObjectLoader<?, ID, DO> doLoader = this.createDOLoader(this, this.defaultSRtoDOConversionFn, filterInIds);
+
+			// raise the event in the get-listeners for the data object loader
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners) onGetListener.onBeforeGet(doLoader);
+
+			Stream<DO> dataObjStream = this.doGet(doLoader);
+
+			return dataObjStream;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public Stream<DO> get(Collection<ID> ids) throws IllegalArgumentException, DALException
+	{
+		if (ids == null) throw new IllegalArgumentException("ids");
+
+		try
+		{
+			int i=0;
+			ID[] actualIds = (ID[]) Array.newInstance(this.getDataObjectClass(), ids.size());
+
+			for (ID id : ids) actualIds[i++] = id;
+
+			// get-listener events will be fired in the called method
+			Stream<DO> dataObjStream = this.get(actualIds);
+
+			return dataObjStream;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Stream<DO> getAll() throws DALException
+	{
+		try
+		{
+			DataObjectLoader<?, ID, DO> doLoader = this.createDOLoader(this, this.defaultSRtoDOConversionFn);
+
+			// raise the event in the get-listeners for the data object loader
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners) onGetListener.onBeforeGet(doLoader);
+
+			Stream<DO> dataObjStream = this.doGet(doLoader);
+
+			// events raised for the loaded data objects are supposed to happen in the implementation of the data object loader
+
+			return dataObjStream;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void save(DO dataObject) throws IllegalArgumentException, DALException 
+	{
+		if (dataObject == null) throw new IllegalArgumentException("dataObject");
+
+		try
+		{
+			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners)
+			{
+				if (!onSaveListener.onBeforeSaving(dataObject)) return;
+			}
+
+			this.updateDataObjTimeStamps(dataObject);
+			this.doSave(dataObject);
 	
+			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSaved(dataObject);
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public void save(Object dataObject) throws IllegalArgumentException, DALException 
+	{
+		try
+		{
+			if (dataObject == null) throw new IllegalArgumentException("dataObject");
+			if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
+
+			this.save((DO) dataObject);
+		}
+		catch (IllegalArgumentException e)
+		{
+			throw e;
+		}
+		catch (DALException e)
+		{
+			throw e;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void save(Collection<DO> dataObjects) throws IllegalArgumentException, DALException
+	{
+		if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
+
+		try
+		{
+			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners)
+			{
+				if (!onSaveListener.onBeforeSaving(dataObjects)) return;
+			}
+
+			this.updateDataObjTimeStamps(dataObjects);
+			this.doSave(dataObjects);
+	
+			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSaved(dataObjects);
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public void save(GenericDataObject<ID>[] dataObjects) throws DALException
+	{
+		try
+		{
+			if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
+	
+			Collection<DO> dataObjectsList = new ArrayList<>(dataObjects.length);
+	
+			for (GenericDataObject<ID> dataObject : dataObjects)
+			{
+				if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
+
+				dataObjectsList.add((DO) dataObject);
+			}
+
+			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners)
+			{
+				if (!onSaveListener.onBeforeSaving(dataObjectsList)) return;
+			}
+
+			this.updateDataObjTimeStamps(dataObjectsList);
+			this.doSave(dataObjectsList);
+
+			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSaved(dataObjectsList);
+		}
+		catch (IllegalArgumentException e)
+		{
+			throw e;
+		}
+		catch (DALException e)
+		{
+			throw e;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void delete(DO dataObject) throws IllegalArgumentException, DALException 
+	{
+		if (dataObject == null) throw new IllegalArgumentException("dataObject");
+
+		try
+		{
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
+			{
+				if (!onDeleteListener.onBeforeDeleting(dataObject)) return;
+			}
+
+			this.doDelete(dataObject);
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObject);
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public void delete(Object dataObject) throws IllegalArgumentException, DALException 
+	{
+		try
+		{
+			if (dataObject == null) throw new IllegalArgumentException("dataObject");
+			if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
+			
+			this.delete((DO) dataObject);
+		}
+		catch (IllegalArgumentException e)
+		{
+			throw e;
+		}
+		catch (DALException e)
+		{
+			throw e;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void delete(Collection<DO> dataObjects) throws IllegalArgumentException, DALException
+	{
+		if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
+
+		try
+		{
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
+			{
+				if (!onDeleteListener.onBeforeDeleting(dataObjects)) return;
+			}
+
+			this.doDelete(dataObjects);
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjects);
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public void delete(DO[] dataObjects) throws DALException
+	{
+		try
+		{
+			if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
+	
+			Collection<DO> dataObjectsList = new ArrayList<>(dataObjects.length);
+	
+			for (GenericDataObject<ID> dataObject : dataObjects)
+			{
+				if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
+
+				dataObjectsList.add((DO) dataObject);
+			}
+
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
+			{
+				if (!onDeleteListener.onBeforeDeleting(dataObjectsList)) return;
+			}
+
+			this.doDelete(dataObjectsList);
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjectsList);
+		}
+		catch (IllegalArgumentException e)
+		{
+			throw e;
+		}
+		catch (DALException e)
+		{
+			throw e;
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public void delete(ID dataObjectId) throws IllegalArgumentException, DALException
+	{
+		if (dataObjectId == null) throw new IllegalArgumentException("dataObjectId");
+
+		try
+		{
+			ID[] dataObjectIdsToDelete = (ID[]) Array.newInstance(dataObjectId.getClass(), 1);
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
+			{
+				dataObjectIdsToDelete = onDeleteListener.onBeforeDeleting(dataObjectIdsToDelete);
+			}
+	
+			this.doDelete(dataObjectIdsToDelete);
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjectIdsToDelete);
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void delete(ID[] dataObjectIds) throws IllegalArgumentException, DALException
+	{
+		if (dataObjectIds == null) throw new IllegalArgumentException("dataObjectIds");
+
+		try
+		{
+			ID[] dataObjectIdsToDelete = dataObjectIds;
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
+			{
+				dataObjectIdsToDelete = onDeleteListener.onBeforeDeleting(dataObjectIdsToDelete);
+			}
+	
+			this.doDelete(dataObjectIdsToDelete);
+	
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjectIdsToDelete);
+		}
+		catch (Exception e)
+		{
+			throw new DALException(e);
+		}
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -196,520 +844,37 @@ public abstract class GenericDAO <T extends GenericDataObject> implements Generi
 	 * {@inheritDoc}
 	 */
 	@Override
-	public synchronized void registerOnGetListener(GetListener<T> listener) throws IllegalArgumentException
+	public Stream<DO> getRecent() throws DALException
 	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onGetListeners.add(listener);
+		return this.getRecent(latestModificationTimeStamp, false);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public synchronized void unregisterOnGetListener(GetListener<T> listener) throws IllegalArgumentException
+	public Stream<DO> getRecent(boolean returnDeleted) throws DALException
 	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onGetListeners.remove(listener);		
+		return this.getRecent(this.latestModificationTimeStamp, returnDeleted);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public synchronized Collection<GetListener<T>> getOnGetListeners()
-	{
-		return new HashSet<>(this.onGetListeners);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized void registerOnSaveListener(SaveListener<T> listener) throws IllegalArgumentException
-	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onSaveListeners.add(listener);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized void unregisterOnSaveListener(SaveListener<T> listener) throws IllegalArgumentException
-	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onSaveListeners.remove(listener);		
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized Collection<SaveListener<T>> getOnSaveListeners()
-	{
-		return new HashSet<>(this.onSaveListeners);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized void registerOnDeleteListener(DeleteListener<T> listener) throws IllegalArgumentException
-	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onDeleteListeners.add(listener);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized void unregisterOnDeleteListener(DeleteListener<T> listener) throws IllegalArgumentException
-	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onDeleteListeners.remove(listener);		
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized Collection<DeleteListener<T>> getOnDeleteListeners()
-	{
-		return new HashSet<>(this.onDeleteListeners);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized void registerOnReloadListener(ReloadListener<T> listener) throws IllegalArgumentException
-	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onReloadListeners.add(listener);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized void unregisterOnReloadListener(ReloadListener<T> listener) throws IllegalArgumentException
-	{
-		if (listener == null) throw new IllegalArgumentException("listener");
-
-		this.onReloadListeners.remove(listener);		
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public synchronized Collection<ReloadListener<T>> getOnReloadListeners()
-	{
-		return new HashSet<>(this.onReloadListeners);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public T get(int id) throws DALException 
+	public Stream<DO> getRecent(long lastModTS, boolean returnDeleted) throws DALException
 	{
 		try
 		{
-			int actualId = id;
-			
-			for (GetListener<T> onGetListener : this.onGetListeners)
-			{
-				actualId = onGetListener.onBeforeGet(actualId);
-			}
-	
-			T dataObject = this.doGet(actualId);
-	
-			for (GetListener<T> onGetListener : this.onGetListeners) onGetListener.onAfterGet(dataObject);
+			DataObjectLoader<?, ID, DO> doLoader = this.createRecentDOLoader(this, this.defaultSRtoDOConversionFn, lastModTS, returnDeleted);
 
-			return dataObject;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners) onGetListener.onBeforeGet(doLoader);
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Collection<T> get(int[] ids) throws IllegalArgumentException, DALException
-	{
-		if (ids == null) throw new IllegalArgumentException("ids");
+			Stream<DO> dataObjStream = this.doGet(doLoader);
 
-		try
-		{
-			int[] actualIds = ids;
-			
-			for (GetListener<T> onGetListener : this.onGetListeners)
-			{
-				actualIds = onGetListener.onBeforeGet(actualIds);
-			}
-	
-			Collection<T> dataObjects = this.doGet(actualIds);
-	
-			for (GetListener<T> onGetListener : this.onGetListeners) onGetListener.onAfterGet(dataObjects);
+			// events raised for the loaded data objects are supposed to happen in the implementation of the data object loader
 
-			return dataObjects;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Collection<T> getAll() throws DALException 
-	{
-		try
-		{
-			int[] actualIds = null;
-			
-			for (GetListener<T> onGetListener : this.onGetListeners)
-			{
-				actualIds = onGetListener.onBeforeGet(actualIds);
-			}
-	
-			Collection<T> dataObjects = this.doGet(actualIds);
-	
-			for (GetListener<T> onGetListener : this.onGetListeners) onGetListener.onAfterGet(dataObjects);
-
-			return dataObjects;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Stream<T> getAll(Predicate<? super T> filterPredicate) throws DALException
-	{
-		try
-		{
-			DataObjectLoader<Integer, T> ll = this.createDOLoader();
-			Stream<T> lazyLoadingStream = (filterPredicate == null) ? StreamSupport.stream(ll, false)
-																	: StreamSupport.stream(ll, false).filter(filterPredicate);
-
-					  lazyLoadingStream.onClose(ll);
-
-			return lazyLoadingStream;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void save(T dataObject) throws IllegalArgumentException, DALException 
-	{
-		if (dataObject == null) throw new IllegalArgumentException("dataObject");
-
-		try
-		{
-			for (SaveListener<T> onSaveListener : this.onSaveListeners)
-			{
-				if (!onSaveListener.onBeforeSaving(dataObject)) return;
-			}
-	
-			this.doSave(dataObject);
-	
-			for (SaveListener<T> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSaved(dataObject);
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public void save(Object dataObject) throws IllegalArgumentException, DALException 
-	{
-		try
-		{
-			if (dataObject == null) throw new IllegalArgumentException("dataObject");
-			if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
-
-			this.save((T) dataObject);
-		}
-		catch (IllegalArgumentException e)
-		{
-			throw e;
-		}
-		catch (DALException e)
-		{
-			throw e;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void save(Collection<T> dataObjects) throws IllegalArgumentException, DALException
-	{
-		if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
-
-		try
-		{
-			for (SaveListener<T> onSaveListener : this.onSaveListeners)
-			{
-				if (!onSaveListener.onBeforeSaving(dataObjects)) return;
-			}
-	
-			this.doSave(dataObjects);
-	
-			for (SaveListener<T> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSaved(dataObjects);
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public void save(GenericDataObject[] dataObjects) throws DALException
-	{
-		try
-		{
-			if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
-	
-			Collection<T> dataObjectsList = new ArrayList<>(dataObjects.length);
-	
-			for (GenericDataObject dataObject : dataObjects)
-			{
-				if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
-
-				dataObjectsList.add((T) dataObject);
-			}
-
-			for (SaveListener<T> onSaveListener : this.onSaveListeners)
-			{
-				if (!onSaveListener.onBeforeSaving(dataObjectsList)) return;
-			}
-
-			this.doSave(dataObjectsList);
-
-			for (SaveListener<T> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSaved(dataObjectsList);
-		}
-		catch (IllegalArgumentException e)
-		{
-			throw e;
-		}
-		catch (DALException e)
-		{
-			throw e;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void delete(T dataObject) throws IllegalArgumentException, DALException 
-	{
-		if (dataObject == null) throw new IllegalArgumentException("dataObject");
-
-		try
-		{
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners)
-			{
-				if (!onDeleteListener.onBeforeDeleting(dataObject)) return;
-			}
-	
-			this.doDelete(dataObject);
-	
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObject);
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public void delete(Object dataObject) throws IllegalArgumentException, DALException 
-	{
-		try
-		{
-			if (dataObject == null) throw new IllegalArgumentException("dataObject");
-			if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
-			
-			this.delete((T) dataObject);
-		}
-		catch (IllegalArgumentException e)
-		{
-			throw e;
-		}
-		catch (DALException e)
-		{
-			throw e;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void delete(Collection<T> dataObjects) throws IllegalArgumentException, DALException
-	{
-		if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
-
-		try
-		{
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners)
-			{
-				if (!onDeleteListener.onBeforeDeleting(dataObjects)) return;
-			}
-	
-			this.doDelete(dataObjects);
-	
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjects);
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void delete(int[] dataObjectIds) throws IllegalArgumentException, DALException
-	{
-		if (dataObjectIds == null) throw new IllegalArgumentException("dataObjectIds");
-
-		try
-		{
-			int[] dataObjectIdsToDelete = dataObjectIds;
-	
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners)
-			{
-				dataObjectIdsToDelete = onDeleteListener.onBeforeDeleting(dataObjectIdsToDelete);
-			}
-	
-			this.doDelete(dataObjectIdsToDelete);
-	
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjectIdsToDelete);
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public void delete(GenericDataObject[] dataObjects) throws DALException
-	{
-		try
-		{
-			if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
-	
-			Collection<T> dataObjectsList = new ArrayList<>(dataObjects.length);
-	
-			for (GenericDataObject dataObject : dataObjects)
-			{
-				if (!this.getDataObjectClass().isInstance(dataObject)) throw new IllegalArgumentException("dataObject");
-
-				dataObjectsList.add((T) dataObject);
-			}
-
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners)
-			{
-				if (!onDeleteListener.onBeforeDeleting(dataObjectsList)) return;
-			}
-	
-			this.doDelete(dataObjectsList);
-	
-			for (DeleteListener<T> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDeleted(dataObjectsList);
-		}
-		catch (IllegalArgumentException e)
-		{
-			throw e;
-		}
-		catch (DALException e)
-		{
-			throw e;
-		}
-		catch (Exception e)
-		{
-			throw new DALException(e);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Collection<T> reloadAll() throws DALException
-	{
-		try
-		{
-			Collection<T> dataObjects = new ArrayList<>();
-
-			for (ReloadListener<T> onReloadListener : this.onReloadListeners)
-			{
-				if (!onReloadListener.onBeforeReload(dataObjects)) return dataObjects;
-			}
-
-			dataObjects.addAll(this.doReloadAll());
-
-			for (ReloadListener<T> onReloadListener : this.onReloadListeners) onReloadListener.onAfterReload(dataObjects);
-
-			return dataObjects;
+			return dataObjStream;
 		}
 		catch (Exception e)
 		{
