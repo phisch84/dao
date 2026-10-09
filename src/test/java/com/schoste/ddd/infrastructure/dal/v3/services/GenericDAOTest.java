@@ -1,7 +1,5 @@
 package com.schoste.ddd.infrastructure.dal.v3.services;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -131,68 +129,74 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	protected abstract boolean assertDefaultDeleteListenersAfterDelete(int numOfexpectedDOs);
 
 	/**
-	 * Asserts that the save() method of a DAO implementation actually
-	 * saves a data object
+	 * Asserts that calls to {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)} overrides the
+	 * DAO's last modification time stamp and that calls to {@link GenericDataAccessObject#getLastModifiedTimeStamp()}
+	 * returns this value.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
-	@Test
-	public void testSave() throws Exception
+	@Test 
+	public void testLastModifiedTimeStamp() throws Exception
 	{
-		DO dataObject = this.createDataObject(0, "testSave");
-		
-		this.getDataAccessObject().save(dataObject);
-		
-		Assert.assertNotEquals((Integer) 0, dataObject.getId());
-		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
-	}
-	
-	/**
-	 * Asserts that the save() method of a DAO implementation actually
-	 * saves an existing data object.
-	 * 
-	 * @throws Exception re-throws every exception
-	 */
-	@Test
-	public void testSaveExisting() throws Exception
-	{
-		DO dataObject = this.getExistingDataObject(1);
-		ID id = dataObject.getId();
-		long modTs = dataObject.getModifiedTimeStamp();
-		
-		Thread.sleep(100); // required to reliably test the change of the mod ts
-		
-		this.modifyDataObject(dataObject, "testSaveExisting");
-		this.getDataAccessObject().save(dataObject);
-		
-		Assert.assertEquals((Integer) id, dataObject.getId());
-		Assert.assertTrue(modTs < dataObject.getModifiedTimeStamp());
+		long originalTS = this.getDataAccessObject().getLastModifiedTimeStamp();
+		long expectedNewTS = System.currentTimeMillis();
+
+		this.getDataAccessObject().setLastModifiedTimeStamp(expectedNewTS);
+
+		long actualTS = this.getDataAccessObject().getLastModifiedTimeStamp();
+
+		// reset the time stamp to avoid unintented interference with other tests
+		this.getDataAccessObject().setLastModifiedTimeStamp(originalTS);
+
+		Assert.assertEquals(expectedNewTS, actualTS);
 	}
 
 	/**
-	 * Asserts that the get() method of a DAO implementation returns a data object
-	 * if it exists
+	 * Asserts that the {@link GenericDataAccessObject#createDataObject()} method of a DAO implementation actually
+	 * creates a data objects
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
 	@Test
-	public void testSaveAndGetExisting() throws Exception
+	public void testCreateDataObject() throws Exception
 	{
-		DO newObject = this.createDataObject(0, "testSaveAndGetExisting");
-		
-		this.getDataAccessObject().save(newObject);
-		
-		ID newObjectId = newObject.getId();		
-		DO dataObject = this.getDataAccessObject().get(newObjectId);
+		DO dataObject = this.getDataAccessObject().createDataObject();
 		
 		Assert.assertNotNull(dataObject);
-		Assert.assertNotEquals((Integer) 0, dataObject.getId());
-		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
+		Assert.assertNotNull(dataObject.getId());
+		Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObject.getId()));
 	}
+
+	/**
+	 * Asserts that data object newly created via {@link GenericDataAccessObject#createDataObject(Object...)}
+	 * will have an identifier (see {@link GenericDataObject#getId()}) for that:
+	 * 1. no other object was created with the same id, and
+	 * 2. {@link GenericDataAccessObject#isVirtualId(java.io.Serializable) returns true
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testCreateDataObjectAndVirtualId() throws Exception
+	{
+		int NUM_DATA_OBJECTS = 10;
+		Collection<ID> dataObjectIds = new ArrayList<>(NUM_DATA_OBJECTS);
+
+		for (int i=0; i<NUM_DATA_OBJECTS; i++)
+		{
+			DO dataObject = this.getDataAccessObject().createDataObject(0, "testCreateDataObjectAndVirtualId", i);
+
+			Assert.assertNotNull(dataObject);
+			Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObject.getId()));
+			Assert.assertFalse(dataObjectIds.contains(dataObject.getId()));
+
+			dataObjectIds.add(dataObject.getId());
+		}
+	}
+
 	
 	/**
-	 * Asserts that the get() method of a DAO implementation returns null
-	 * if a not-existing data object is requested
+	 * Asserts that the {@link GenericDataAccessObject#get(Serializable) method of a DAO implementation
+	 * returns null if a not-existing data object is requested
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -515,6 +519,66 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
+	 * Asserts that the save() method of a DAO implementation actually
+	 * saves a data object
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testSave() throws Exception
+	{
+		DO dataObject = this.createDataObject(0, "testSave");
+		
+		this.getDataAccessObject().save(dataObject);
+		
+		Assert.assertNotEquals((Integer) 0, dataObject.getId());
+		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
+	}
+	
+	/**
+	 * Asserts that the save() method of a DAO implementation actually
+	 * saves an existing data object.
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testSaveExisting() throws Exception
+	{
+		DO dataObject = this.getExistingDataObject(1);
+		ID id = dataObject.getId();
+		long modTs = dataObject.getModifiedTimeStamp();
+		
+		Thread.sleep(100); // required to reliably test the change of the mod ts
+		
+		this.modifyDataObject(dataObject, "testSaveExisting");
+		this.getDataAccessObject().save(dataObject);
+		
+		Assert.assertEquals((Integer) id, dataObject.getId());
+		Assert.assertTrue(modTs < dataObject.getModifiedTimeStamp());
+	}
+
+	/**
+	 * Asserts that the get() method of a DAO implementation returns a data object
+	 * if it exists
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testSaveAndGetExisting() throws Exception
+	{
+		DO newObject = this.createDataObject(0, "testSaveAndGetExisting");
+		
+		this.getDataAccessObject().save(newObject);
+		
+		ID newObjectId = newObject.getId();		
+		DO dataObject = this.getDataAccessObject().get(newObjectId);
+		
+		Assert.assertNotNull(dataObject);
+		Assert.assertNotEquals((Integer) 0, dataObject.getId());
+		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
+	}
+
+	/**
 	 * Asserts that the delete() method of a DAO implementation actually
 	 * deletes the file of a data object in the file system
 	 * 
@@ -589,22 +653,6 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		Assert.assertNotNull(dataObjectNotToSave.getId());
 		Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObjectNotToSave.getId()));
 		Assert.assertTrue(dataObjectNotToSave.getIsDeleted());
-	}
-
-	/**
-	 * Asserts that the {@link GenericDataAccessObject#createDataObject()} method of a DAO implementation actually
-	 * creates a data objects
-	 * 
-	 * @throws Exception re-throws every exception
-	 */
-	@Test
-	public void testCreateDataObject() throws Exception
-	{
-		DO dataObject = this.getDataAccessObject().createDataObject();
-		
-		Assert.assertNotNull(dataObject);
-		Assert.assertNotNull(dataObject.getId());
-		Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObject.getId()));
 	}
 
 	/**
@@ -769,32 +817,6 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		Assert.assertNotNull(dataObject.getId());
 		Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObject.getId()));
 				});
-		}
-	}
-
-	/**
-	 * Asserts that data object newly created via {@link GenericDataAccessObject#createDataObject(Object...)}
-	 * will have an identifier (see {@link GenericDataObject#getId()}) for that:
-	 * 1. no other object was created with the same id, and
-	 * 2. {@link GenericDataAccessObject#isVirtualId(java.io.Serializable) returns true
-	 * 
-	 * @throws Exception re-throws every exception
-	 */
-	@Test
-	public void testCreateDataObjectAndVirtualId() throws Exception
-	{
-		int NUM_DATA_OBJECTS = 10;
-		Collection<ID> dataObjectIds = new ArrayList<>(NUM_DATA_OBJECTS);
-
-		for (int i=0; i<NUM_DATA_OBJECTS; i++)
-		{
-			DO dataObject = this.getDataAccessObject().createDataObject(0, "testDeleteManyIds", i);
-
-			Assert.assertNotNull(dataObject);
-			Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObject.getId()));
-			Assert.assertFalse(dataObjectIds.contains(dataObject.getId()));
-
-			dataObjectIds.add(dataObject.getId());
 		}
 	}
 

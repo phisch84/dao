@@ -3,9 +3,10 @@ package com.schoste.ddd.infrastructure.dal.v3.models;
 import java.io.Serializable;
 
 /**
- * Functionality of the basic data object from which other data object classes should derive.
+ * Functionality of the basic data object (DO) from which other data object classes must derive.
  * Data objects are persisted either by serialization or persisted in a database.
  * 
+ * @param <ID> the data type of the DO's unique identifier
  * @author Philipp Schosteritsch
  */
 public abstract class GenericDataObject<ID extends Serializable> implements Serializable
@@ -42,7 +43,8 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Gets the time stamp of the creation date
+	 * Gets the time stamp of the creation date (first persistence in the underlying data storage).
+	 * If it wasn't persisted yet, the time stamp is expected to be 0.
 	 * 
 	 * @return the time stamp of the creation date
 	 */
@@ -52,7 +54,8 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Sets the time stamp of the creation date
+	 * Sets the time stamp of the creation date (first persistence in the underlying data storage).
+	 * If it wasn't persisted yet, the time stamp is expected to be 0.
 	 * 
 	 * @param createdTimeStamp the time stamp of the creation date
 	 */
@@ -62,7 +65,8 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Gets the time stamp of the last modification date
+	 * Gets the time stamp of the last modification date (most recent presistence in the underlying data storage).
+	 * If it wasn't persisted yet, the time stamp is expected to be 0.
 	 * 
 	 * @return the time stamp of the last modification date
 	 */
@@ -72,8 +76,8 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Sets the time stamp of the last modification date.
-	 * If the object was newly created, the modification date should be equal to the creation date
+	 * Sets the time stamp of the last modification date (most recent presistence in the underlying data storage).
+	 * If it wasn't persisted yet, the time stamp is expected to be 0.
 	 * 
 	 * @param modifiedTimeStamp the time stamp of the last modification date
 	 */
@@ -104,7 +108,7 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	
 	/**
 	 * Updates the time stamps of the instance before it is persisted.
-	 * To be called by the entity manager before the instance is persisted.
+	 * To be called by the DAO before the instance is persisted.
 	 */
 	public void updateTimeStamps()
 	{

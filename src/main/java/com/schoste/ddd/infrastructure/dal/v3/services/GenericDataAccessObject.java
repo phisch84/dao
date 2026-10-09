@@ -22,7 +22,7 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
 public interface GenericDataAccessObject<ID extends Serializable, DO extends GenericDataObject<ID>>
 {
 	/**
-	 * Gets the nano-second unix time stamp of the most recent modification time/date
+	 * Gets the milli-second unix time stamp of the most recent modification time/date
 	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
 	 * 
 	 * @return the latest modification time stamp of data objects from the underlying data storage
@@ -30,7 +30,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public long getLastModifiedTimeStamp();
 
 	/**
-	 * Override the nano-second unix time stamp of the most recent modification time/date of data objects
+	 * Override the milli-second unix time stamp of the most recent modification time/date of data objects
 	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
 	 * The time stamp is usually tracked by the DAO and updated when {@link GenericDataAccessObject#getRecent(long, boolean)} is called.
 	 * 
@@ -140,7 +140,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getRecent(long lastModTS, boolean returnDeleted) throws DALException;
 
 	/**
-	 * Persists any changes to a data object to the underlying data source
+	 * Persists any changes to a data object (DO) to the underlying data source and updates
+	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}
 	 * 
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
@@ -149,7 +150,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void save(DO dataObject) throws IllegalArgumentException, DALException;
 	
 	/**
-	 * Persists any changes to a data object to the underlying data source
+	 * Persists any changes to a data object (DO) to the underlying data source and updates
+	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}
 	 * 
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null or an instance of an incompatible class
@@ -158,7 +160,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void save(Object dataObject) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Persists any changes to the given data objects to the underlying data source
+	 * Persists any changes to the data objects (DOs) to the underlying data source and updates
+	 * the DOs' modification time stamps {@link GenericDataObject#getModifiedTimeStamp()}
 	 * 
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
@@ -167,7 +170,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void save(Collection<DO> dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Persists any changes to the given data objects to the underlying data source
+	 * Persists any changes to the data objects (DOs) to the underlying data source and updates
+	 * the DOs' modification time stamps {@link GenericDataObject#getModifiedTimeStamp()}
 	 * 
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or one element is an instance of an incompatible class
@@ -176,7 +180,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void save(GenericDataObject<ID>[] dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Flags a data object as deleted and persists it to the underlying data source
+	 * Flags a data object (DO) as deleted and removes it from the underlying data source.
+	 * After the call, the DO's deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * If it was physically deleted from the underlying data storage depends on the DAO's implementation.
 	 * 
 	 * @param dataObject the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
@@ -185,7 +191,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void delete(DO dataObject) throws IllegalArgumentException, DALException;
 	
 	/**
-	 * Flags a data object as deleted and persists it to the underlying data source
+	 * Flags a data object (DO) as deleted and removes it from the underlying data source.
+	 * After the call, the DO's deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * If it was physically deleted from the underlying data storage depends on the DAO's implementation.
 	 * 
 	 * @param dataObject the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null or an instance of an incompatible class
@@ -194,7 +202,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void delete(Object dataObject) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Flags the given data objects as deleted and persists them to the underlying data source
+	 * Flags the data objects (DOs) as deleted and removes them from the underlying data source.
+	 * After the call, the DOs' deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * If they were physically deleted from the underlying data storage depends on the DAO's implementation.
 	 * 
 	 * @param dataObjects the data objects to delete as array
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
@@ -203,7 +213,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void delete(DO[] dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Flags the given data objects as deleted and persists them to the underlying data source
+	 * Flags the data objects (DOs) as deleted and removes them from the underlying data source.
+	 * After the call, the DOs' deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * If they were physically deleted from the underlying data storage depends on the DAO's implementation.
 	 * 
 	 * @param dataObjects the data objects to delete as collection
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
@@ -212,7 +224,10 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void delete(Collection<DO> dataObjects) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Deletes the data object with the given id
+	 * Deletes the data object (DO) with the given id.
+	 * After the call, the DO's deleted flag MAY BE true ({@link GenericDataObject#getIsDeleted()} == true) 
+	 * if an update of the DO's deleted flag was implemented in the DAO's implementation.
+	 * Otherwise it will be false.
 	 * 
 	 * @param dataObjectId the id of the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObjectIds is null
@@ -221,7 +236,10 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void delete(ID dataObjectId) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Deletes the data objects with given ids
+	 * Deletes all data objects (DOs) with the given ids.
+	 * After the call, the DOs' deleted flag MAY BE true ({@link GenericDataObject#getIsDeleted()} == true) 
+	 * if an update of the DOs' deleted flag was implemented in the DAO's implementation.
+	 * Otherwise it will be false.
 	 * 
 	 * @param dataObjectIds the ids of data objects to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObjectIds is null

@@ -10,6 +10,13 @@ import java.util.stream.Stream;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
 
+/**
+ * Basic implementation of the {@link DataObjectLoader} (DOL) interface that defines certain business rules that DOLs need to adhere to.
+ * 
+ * @param <SR> the data type of a potential source record (SR) that can be turned into a data object
+ * @param <ID> te data type of the data objects' identifier (see {@link GenericDataObject#getId()} and {@link GenericDataObject#setId(Serializable)})
+ * @param <DO> the actual data type of the data objects (DOs) that are loaded
+ */
 abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO extends GenericDataObject<ID>> implements DataObjectLoader<SR, ID, DO>
 {
     protected GenericDataAccessObject<ID, DO> dataAccessObject;
