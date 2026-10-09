@@ -50,7 +50,9 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	protected abstract void modifyDataObject(DO dataObject, Object ...parameters);
 
 	/**
-	 * Expects to find an existing data object with a given id.
+	 * Expects to find an existing data object (DO) with a given integer id.
+	 * In case the DO used for testing uses a different data type for its id than an integer,
+	 * then the method must implement a conversion.
 	 * 
 	 * @param id the id of the existing data object
 	 * @return a data object or null if not found
@@ -196,7 +198,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	
 	/**
 	 * Asserts that the {@link GenericDataAccessObject#get(Serializable) method of a DAO implementation
-	 * returns null if a not-existing data object is requested
+	 * returns null if a not-existing data object (was NOT saved before calling get()) is requested.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -209,8 +211,11 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 	
 	/**
-	 * Asserts that the get() method of a DAO implementation returns a data object
-	 * if it exists
+	 * Asserts that the {@link GenericDataAccessObject#get(Serializable) method of a DAO implementation
+	 * returns a data object (DO) if it exists (was saved before calling get()), and
+	 * that the DO's time stamps have been set, and
+	 * that the DO's id isn't a virtual id anymore, and
+	 * that the DAO's get-listeners have been invoked as expected.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -220,16 +225,65 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		DO dataObject = this.getExistingDataObject(1);
 
 		Assert.assertNotNull(dataObject);
+		Assert.assertNotEquals(0, dataObject.getCreatedTimeStamp());
 		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
+		Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObject.getId()));
 		Assert.assertTrue(this.assertDefaultGetListenersBeforeGet(1));
 		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(1));
-		
-		// Cannot be asserted. What the id is depends on the implementation
-		// Assert.assertEquals(1, dataObject.getId());
 	}
-	
+
 	/**
-	 * Asserts that the getAll() method of a DAO implementation returns all existing data objects
+	 * Asserts that the {@link GenericDataAccessObject#get(java.util.Collection)} method of a DAO implementation actually
+	 * gets all data objects which have one of the provided ids
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testGetMany() throws Exception
+	{
+		int NUM_DATA_OBJECTS = 10;
+		int nomOfExpectedDOLs = 1;
+		ID dataObjId = this.getDataAccessObject().createDataObject().getId();
+		ID[] dataObjectIds = (ID[]) Array.newInstance(dataObjId.getClass(), NUM_DATA_OBJECTS);
+
+		for (int i=0; i<NUM_DATA_OBJECTS; i++)
+		{
+			DO dataObject = this.createDataObject(-1, "testGetMany", i);
+			
+			this.getDataAccessObject().save(dataObject);
+			
+			dataObjectIds[i] = dataObject.getId();
+		}
+
+		Collection<DO> dataObjects = this.getDataAccessObject().get(dataObjectIds).toList();
+		Collection<ID> expectedDataObjectIds = new ArrayList<ID>(NUM_DATA_OBJECTS);
+
+		for (int i=0; i<NUM_DATA_OBJECTS; i++) expectedDataObjectIds.add(dataObjectIds[i]);
+
+		Assert.assertEquals(NUM_DATA_OBJECTS, dataObjects.size());
+
+		Collection<ID> actualDataObjectIds = new ArrayList<ID>(dataObjects.size());
+		
+		for (DO dataObject : dataObjects)
+		{
+			Assert.assertNotNull(dataObject.getId());
+			Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObject.getId()));
+			Assert.assertNotEquals(0, dataObject.getCreatedTimeStamp());
+			Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
+
+			actualDataObjectIds.add(dataObject.getId());
+		}
+
+		Assert.assertTrue(expectedDataObjectIds.containsAll(actualDataObjectIds));
+		Assert.assertTrue(actualDataObjectIds.containsAll(expectedDataObjectIds));
+		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(nomOfExpectedDOLs));
+		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(NUM_DATA_OBJECTS));
+	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#getAll()} method of a DAO implementation returns all
+	 * existing (have been persisted before) data objects
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -250,12 +304,14 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		{
 			Assert.assertNotNull(dataObject.getId());
 			Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObject.getId()));
+			Assert.assertNotEquals(0, dataObject.getCreatedTimeStamp());
+			Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
 		} 
 	}
 	
 	/**
-	 * Asserts that the getAll() method of a DAO implementation reloads
-	 * data objects only if they were changed or added meanwhile
+	 * Asserts that the {@link GenericDataAccessObject#getAll()} method of a DAO implementation returns all
+	 * existing (have been persisted before) data objects - including deleted ones.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -293,9 +349,101 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(numOfExpectedDOLoaders));
 		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(numOfExpectedDOsInListener));
 	}
-	
+
 	/**
-	 * Asserts that the getRecent() method of a DAO implementation reads all
+	 * Asserts that the {@link GenericDataAccessObject#getRecent()} method of a DAO implementation reads all
+	 * existing data objects from the storage and regards the deleted flag as well as time stamps.
+	 * In this test the expected data objects are created and persisted.
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetRecentCreatedAndSaved() throws Exception
+	{
+		int numOfDataObjects = 5;
+		int numOfExpectedDOLoaders = 2;
+
+		// call getRecent() to update the DAO's internal last modification time stamp 
+		this.getDataAccessObject().getRecent().toList();
+
+		Thread.sleep(100);
+
+		for (int i=0; i<numOfDataObjects; i++)
+		{
+			DO dataObject = this.createDataObject(-1, "testGetRecentCreatedAndSaved", i);
+			
+			this.getDataAccessObject().save(dataObject);
+		}
+
+		// a data object that is flagged as deleted by still exists in the storage. It should not be returned by getRecent()
+		DO deletedDataObject = this.createDataObject(-1, "testGetRecentCreatedAndSaved", (numOfDataObjects+1));
+		   deletedDataObject.setIsDeleted(true);
+
+		this.getDataAccessObject().save(deletedDataObject);
+
+		Thread.sleep(100);
+
+		long daoModTS = this.getDataAccessObject().getLastModifiedTimeStamp();
+		Collection<DO> dataObjects = this.getDataAccessObject().getRecent().toList();
+
+		for (DO dataObj : dataObjects)
+		{
+			Assert.assertFalse(dataObj.getIsDeleted());
+			Assert.assertTrue(dataObj.getModifiedTimeStamp() >= daoModTS);
+		}
+
+		Assert.assertTrue(this.getDataAccessObject().getLastModifiedTimeStamp() >= daoModTS);
+		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(numOfExpectedDOLoaders));
+		Assert.assertEquals(numOfDataObjects, dataObjects.size());
+	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#getRecent()} method of a DAO implementation reads all
+	 * existing data objects (DOs) from the storage and regards the deleted flag as well as time stamps.
+	 * But it must not return DOs that were not saved yet.
+	 * In this test the expected data objects are created and persisted.
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetRecentCreatedNotSaved() throws Exception
+	{
+		int numOfDataObjects = 0;
+		int numOfExpectedDOLoaders = 2;
+
+		// call getRecent() to update the DAO's internal last modification time stamp 
+		this.getDataAccessObject().getRecent().toList();
+
+		Thread.sleep(100);
+
+		for (int i=0; i<numOfDataObjects; i++)
+		{
+			@SuppressWarnings("unused")
+			DO dataObject = this.createDataObject(-1, "testGetRecentCreatedNotSaved", i);
+		}
+
+		// a data object that is flagged as deleted by still exists in the storage. It should not be returned by getRecent()
+		DO deletedDataObject = this.createDataObject(-1, "testGetRecentCreatedNotSaved", (numOfDataObjects+1));
+		   deletedDataObject.setIsDeleted(true);
+
+		Thread.sleep(100);
+
+		long daoModTS = this.getDataAccessObject().getLastModifiedTimeStamp();
+		Collection<DO> dataObjects = this.getDataAccessObject().getRecent().toList();
+
+		for (DO dataObj : dataObjects)
+		{
+			Assert.assertFalse(dataObj.getIsDeleted());
+			Assert.assertTrue(dataObj.getModifiedTimeStamp() >= daoModTS);
+		}
+
+		Assert.assertTrue(this.getDataAccessObject().getLastModifiedTimeStamp() >= daoModTS);
+		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(numOfExpectedDOLoaders));
+		Assert.assertEquals(numOfDataObjects, dataObjects.size());
+	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#getRecent()} method of a DAO implementation reads all
 	 * existing data objects from the storage and regards the deleted flag as well as time stamps
 	 * In this test the expected data objects are modified and persisted.
 	 * 
@@ -419,15 +567,14 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
-	 * Asserts that the getRecent() method of a DAO implementation reads all
-	 * existing data objects from the storage regardless of the deleted flag,
-	 * but with regards to the time stamps.
+	 * Asserts that the {@link GenericDataAccessObject#getRecent(boolean)} method of a DAO implementation reads all
+	 * existing data objects from the storage regardless of the deleted flag, but with regards to the time stamps.
 	 * In this test the expected data objects are modified and persisted.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
 	@Test
-	public void testGetRecentModifiedAndDeleted() throws Exception
+	public void testGetRecentDeleted() throws Exception
 	{
 		int numOfDataObjects = 10;
 		int numOfExpectedDOs = 3; // 3 modified, and 1 deleted (which is expected anyways)
@@ -472,50 +619,53 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
-	 * Asserts that the getRecent() method of a DAO implementation reads all
-	 * existing data objects from the storage and regards the deleted flag as well as time stamps.
-	 * In this test the expected data objects are created and persisted.
+	 * Asserts that the {@link GenericDataAccessObject#getRecent(long, boolean)} method of a DAO implementation reads all
+	 * existing data objects from the storage regardless of the deleted flag, but with regards to the time stamp override.
+	 * In this test the expected data objects are modified and persisted.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
 	@Test
-	public void testGetRecentCreated() throws Exception
+	public void testGetRecentModifiedAndDeleted() throws Exception
 	{
-		int numOfDataObjects = 5;
+		int numOfDataObjects = 10;
+		int numOfExpectedDOs = 10; // 3 modified, and 1 deleted (which is expected anyways)
+		int numOfExpectedAfterGetCalls = 23; // 2*getRecent() + 3*getExistingDataObject() [will gall DAO's get()] +deleted
 		int numOfExpectedDOLoaders = 2;
 
 		// call getRecent() to update the DAO's internal last modification time stamp 
 		this.getDataAccessObject().getRecent().toList();
 
+		DO dataObject1 = this.getExistingDataObject(2);
+		DO dataObject2 = this.getExistingDataObject(numOfDataObjects-1);
+		DO dataObject3 = this.getExistingDataObject(1);
+		   dataObject3.setIsDeleted(true);
+				
+		this.modifyDataObject(dataObject1, "testGetRecentModified-1");
+		this.modifyDataObject(dataObject2, "testGetRecentModified-2");
+		this.modifyDataObject(dataObject3, "testGetRecentModified-3");
+
 		Thread.sleep(100);
 
-		for (int i=0; i<numOfDataObjects; i++)
-		{
-			DO dataObject = this.createDataObject(-1, "testGetRecentCreated", i);
-			
-			this.getDataAccessObject().save(dataObject);
-		}
+		// save the modified objects so their modification date time stamps are updated
+		this.getDataAccessObject().save(dataObject1);
+		this.getDataAccessObject().save(dataObject2);
 
-		// a data object that is flagged as deleted by still exists in the storage. It should not be returned by getRecent()
-		DO deletedDataObject = this.createDataObject(-1, "testGetRecentCreated", (numOfDataObjects+1));
-		   deletedDataObject.setIsDeleted(true);
-
-		this.getDataAccessObject().save(deletedDataObject);
+		// save the DO that was flagged deleted instead of calling DAO's delete() as this function might actually remove it
+		this.getDataAccessObject().save(dataObject3);
 
 		Thread.sleep(100);
 
 		long daoModTS = this.getDataAccessObject().getLastModifiedTimeStamp();
-		Collection<DO> dataObjects = this.getDataAccessObject().getRecent().toList();
+		Collection<DO> dataObjects = this.getDataAccessObject().getRecent(Long.MIN_VALUE, true).toList(); // override the time stamp for the call
 
-		for (DO dataObj : dataObjects)
-		{
-			Assert.assertFalse(dataObj.getIsDeleted());
-			Assert.assertTrue(dataObj.getModifiedTimeStamp() >= daoModTS);
-		}
+		// make sure the DAO's time stamp wasn't modified
+		Assert.assertEquals(daoModTS, this.getDataAccessObject().getLastModifiedTimeStamp());
 
-		Assert.assertTrue(this.getDataAccessObject().getLastModifiedTimeStamp() >= daoModTS);
+		// make sure everything was returned
+		Assert.assertEquals(numOfExpectedDOs, dataObjects.size());
 		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(numOfExpectedDOLoaders));
-		Assert.assertEquals(numOfDataObjects, dataObjects.size());
+		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(numOfExpectedAfterGetCalls));
 	}
 
 	/**
@@ -653,52 +803,6 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		Assert.assertNotNull(dataObjectNotToSave.getId());
 		Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObjectNotToSave.getId()));
 		Assert.assertTrue(dataObjectNotToSave.getIsDeleted());
-	}
-
-	/**
-	 * Asserts that the {@link GenericDataAccessObject#get(java.util.Collection)} method of a DAO implementation actually
-	 * gets all data objects which have one of the provided ids
-	 * 
-	 * @throws Exception re-throws every exception
-	 */
-	@SuppressWarnings("unchecked")
-	@Test
-	public void testGetMany() throws Exception
-	{
-		int NUM_DATA_OBJECTS = 10;
-		int nomOfExpectedDOLs = 1;
-		ID dataObjId = this.getDataAccessObject().createDataObject().getId();
-		ID[] dataObjectIds = (ID[]) Array.newInstance(dataObjId.getClass(), NUM_DATA_OBJECTS);
-
-		for (int i=0; i<NUM_DATA_OBJECTS; i++)
-		{
-			DO dataObject = this.createDataObject(-1, "testGetMany", i);
-			
-			this.getDataAccessObject().save(dataObject);
-			
-			dataObjectIds[i] = dataObject.getId();
-		}
-
-		Collection<DO> dataObjects = this.getDataAccessObject().get(dataObjectIds).toList();
-		Collection<ID> expectedDataObjectIds = new ArrayList<ID>(NUM_DATA_OBJECTS);
-
-		for (int i=0; i<NUM_DATA_OBJECTS; i++) expectedDataObjectIds.add(dataObjectIds[i]);
-
-		Assert.assertEquals(NUM_DATA_OBJECTS, dataObjects.size());
-
-		Collection<ID> actualDataObjectIds = new ArrayList<ID>(dataObjects.size());
-		
-		for (DO dataObject : dataObjects)
-		{
-			Assert.assertNotNull(dataObject.getId());
-			Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObject.getId()));
-			actualDataObjectIds.add(dataObject.getId());
-		}
-
-		Assert.assertTrue(expectedDataObjectIds.containsAll(actualDataObjectIds));
-		Assert.assertTrue(actualDataObjectIds.containsAll(expectedDataObjectIds));
-		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(nomOfExpectedDOLs));
-		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(NUM_DATA_OBJECTS));
 	}
 
 	/**
