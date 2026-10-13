@@ -77,6 +77,8 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
                     return true;
                 }
+
+                sourceRecord = this.getNextSourceRecord();
             }
 
             // if the user chose to override the last modification time stamp, DO NOT update it on the DAO...

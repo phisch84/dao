@@ -12,17 +12,17 @@ import com.schoste.ddd.infrastructure.dal.v3.services.DataObjectLoader;
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */
-public class MockedGetListener<DO extends GenericDataObject<Integer>> implements GetListener<Integer, DO>
+public class MockedGetListener<DO extends GenericDataObject<Long>> implements GetListener<Long, DO>
 {
-	protected Collection<Integer> idsReceivedBeforeGetting = new ArrayList<>();
+	protected Collection<Long> idsReceivedBeforeGetting = new ArrayList<>();
 	protected Collection<DO> dosReceivedAfterGetting = new ArrayList<>();
-	protected Collection<DataObjectLoader<?, Integer, DO>> dolsReceivedBeforeGetting = new HashSet<>();
+	protected Collection<DataObjectLoader<?, Long, DO>> dolsReceivedBeforeGetting = new HashSet<>();
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Integer onBeforeGet(Integer id)
+	public Long onBeforeGet(Long id)
 	{
 		this.idsReceivedBeforeGetting.add(id);
 
@@ -33,11 +33,11 @@ public class MockedGetListener<DO extends GenericDataObject<Integer>> implements
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Integer[] onBeforeGet(Integer[] ids)
+	public Long[] onBeforeGet(Long[] ids)
 	{
 		if (ids == null) return null;
 
-		for (int id : ids) this.idsReceivedBeforeGetting.add(id);
+		for (long id : ids) this.idsReceivedBeforeGetting.add(id);
 
 		return ids;
 	}
@@ -46,7 +46,7 @@ public class MockedGetListener<DO extends GenericDataObject<Integer>> implements
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onBeforeGet(DataObjectLoader<?, Integer, DO> dataObjLoader)
+	public void onBeforeGet(DataObjectLoader<?, Long, DO> dataObjLoader)
 	{
 		this.dolsReceivedBeforeGetting.add(dataObjLoader);
 		this.idsReceivedBeforeGetting.add(null);
@@ -70,7 +70,7 @@ public class MockedGetListener<DO extends GenericDataObject<Integer>> implements
 	 * 
 	 * @return a collection of data object ids
 	 */
-	public Collection<Integer> getIdsReceivedBeforeGetting()
+	public Collection<Long> getIdsReceivedBeforeGetting()
 	{
 		return this.idsReceivedBeforeGetting;
 	}
@@ -80,7 +80,7 @@ public class MockedGetListener<DO extends GenericDataObject<Integer>> implements
 	 * 
 	 * @return a collection of data objects
 	 */
-	public Collection<DataObjectLoader<?, Integer, DO>> getDOLsReceivedBeforeGetting()
+	public Collection<DataObjectLoader<?, Long, DO>> getDOLsReceivedBeforeGetting()
 	{
 		return this.dolsReceivedBeforeGetting;
 	}

@@ -23,16 +23,17 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 {
 	@Autowired
 	protected ApplicationContext applicationContext;
+	protected long lastVirtualId=0;
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	protected DataObjectLoader<?, Integer, MockedDO> createDOLoader(GenericDataAccessObject<Integer, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, Object... args) throws Exception
+	protected DataObjectLoader<?, Long, MockedDO> createDOLoader(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, Object... args) throws Exception
 	{
 		Function<?, MockedDO> cf = (sourceRecordToDataObjConversionFn != null) ? sourceRecordToDataObjConversionFn : this.defaultSRtoDOConversionFn;
-		DataObjectLoader<?, Integer, MockedDO> dol = this.applicationContext.getBean(DefaultDataObjectLoader.class, this, cf);
+		DataObjectLoader<?, Long, MockedDO> dol = this.applicationContext.getBean(DefaultDataObjectLoader.class, this, cf);
 
 		return dol;
 	}
@@ -42,10 +43,10 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	protected DataObjectLoader<?, Integer, MockedDO> createDOLoader(GenericDataAccessObject<Integer, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, Set<Integer> ids, Object... args) throws Exception
+	protected DataObjectLoader<?, Long, MockedDO> createDOLoader(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, Set<Long> ids, Object... args) throws Exception
 	{
 		Function<?, MockedDO> cf = (sourceRecordToDataObjConversionFn != null) ? sourceRecordToDataObjConversionFn : this.defaultSRtoDOConversionFn;
-		DataObjectLoader<?, Integer, MockedDO> dol = this.applicationContext.getBean(DefaultDataObjectLoader.class, this,  cf, ids);
+		DataObjectLoader<?, Long, MockedDO> dol = this.applicationContext.getBean(DefaultDataObjectLoader.class, this,  cf, ids);
 
 		return dol;
 	}
@@ -55,10 +56,10 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	protected RecentDataObjectLoader<?, Integer, MockedDO> createRecentDOLoader(GenericDataAccessObject<Integer, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, long lastModTS, boolean skipDeleted, Object... args) throws Exception
+	protected RecentDataObjectLoader<?, Long, MockedDO> createRecentDOLoader(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, long lastModTS, boolean skipDeleted, Object... args) throws Exception
 	{
 		Function<?, MockedDO> cf = (sourceRecordToDataObjConversionFn != null) ? sourceRecordToDataObjConversionFn : this.defaultSRtoDOConversionFn;
-		RecentDataObjectLoader<?, Integer, MockedDO> dol = this.applicationContext.getBean(RecentDataObjectLoader.class, this, cf, lastModTS, skipDeleted);
+		RecentDataObjectLoader<?, Long, MockedDO> dol = this.applicationContext.getBean(RecentDataObjectLoader.class, this, cf, lastModTS, skipDeleted);
 
 		return dol;
 	}
@@ -86,7 +87,7 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 	 * {@inheritDoc}
 	 */
 	@Override 
-	public boolean isVirtualId(Integer id)
+	public boolean isVirtualId(Long id)
 	{
 		if (id == null) return false;
 		if (id >= 0) return false;
@@ -98,10 +99,13 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected Integer getNextVirtualId(Object... args) throws Exception 
+	protected Long getNextVirtualId(Object... args) throws Exception 
 	{
-		Integer virtualId = (int) (System.nanoTime() / 1000);
-				virtualId = (virtualId < 0) ? virtualId : virtualId*(-1);
+		long virtualId = System.currentTimeMillis()*(-1);
+
+		while (this.lastVirtualId <= virtualId) virtualId--;
+
+		this.lastVirtualId = virtualId;
 
 		return virtualId;
 	}
@@ -111,9 +115,9 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 	 */
 
 	@Override
-	protected Integer getActualId(Object... args) throws Exception 
+	protected Long getActualId(Object... args) throws Exception 
 	{
-		Integer actualId = (int) (System.nanoTime() / 1000);
+		Long actualId = System.currentTimeMillis();
 
 		return actualId;
 	}

@@ -10,9 +10,9 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataAccessObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoader;
 
 @Component
-public class MockedRecentDataObjectLoaderImpl extends GenericRecentDataObjectLoader<Integer, Integer, MockedDO> implements InitializingBean
+public class MockedRecentDataObjectLoaderImpl extends GenericRecentDataObjectLoader<Long, Long, MockedDO> implements InitializingBean
 {
-    public MockedRecentDataObjectLoaderImpl(GenericDataAccessObject<Integer, MockedDO> dataAccessObject, Function<Integer, MockedDO> sourceRecordToDataObjConversionFn, long lastModTS, boolean skipDeleted) throws IllegalArgumentException
+    public MockedRecentDataObjectLoaderImpl(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<Long, MockedDO> sourceRecordToDataObjConversionFn, long lastModTS, boolean skipDeleted) throws IllegalArgumentException
     {
         super(dataAccessObject, sourceRecordToDataObjConversionFn, lastModTS, skipDeleted);
     }
@@ -27,9 +27,9 @@ public class MockedRecentDataObjectLoaderImpl extends GenericRecentDataObjectLoa
     }
 
     @Override
-    protected Integer getNextSourceRecord() 
+    protected Long getNextSourceRecord() 
     {
-        return -1;
+        return -1L;
     }
 
     @Override

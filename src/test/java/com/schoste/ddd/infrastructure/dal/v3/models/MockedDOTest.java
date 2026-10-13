@@ -36,17 +36,17 @@ public class MockedDOTest extends GenericObjectTest<MockedDO>
 		// Object with different data
 		MockedDO equalObject3 = new MockedDO();
 
-		equalObject1.setId(1);
+		equalObject1.setId(1L);
 		equalObject1.setCreatedTimeStamp(1);
 		equalObject1.setModifiedTimeStamp(1);
 		equalObject1.setExampleStringProperty("HELLO");
 
-		equalObject2.setId(1);
+		equalObject2.setId(1L);
 		equalObject2.setCreatedTimeStamp(1);
 		equalObject2.setModifiedTimeStamp(1);
 		equalObject2.setExampleStringProperty("HELLO");
 
-		equalObject3.setId(1);
+		equalObject3.setId(1L);
 		equalObject3.setCreatedTimeStamp(1);
 		equalObject3.setModifiedTimeStamp(1);
 		equalObject3.setExampleStringProperty("WORLD");
@@ -76,17 +76,17 @@ public class MockedDOTest extends GenericObjectTest<MockedDO>
 		// Object with different data
 		MockedDO notEqualObject3 = new MockedDO();
 
-		notEqualObject1.setId(1);
+		notEqualObject1.setId(1L);
 		notEqualObject1.setCreatedTimeStamp(1);
 		notEqualObject1.setModifiedTimeStamp(1);
 		notEqualObject1.setExampleStringProperty("HELLO");
 
-		notEqualObject2.setId(2);
+		notEqualObject2.setId(2L);
 		notEqualObject2.setCreatedTimeStamp(1);
 		notEqualObject2.setModifiedTimeStamp(1);
 		notEqualObject2.setExampleStringProperty("HELLO");
 
-		notEqualObject3.setId(3);
+		notEqualObject3.setId(3L);
 		notEqualObject3.setCreatedTimeStamp(1);
 		notEqualObject3.setModifiedTimeStamp(1);
 		notEqualObject3.setExampleStringProperty("WORLD");
@@ -102,17 +102,17 @@ public class MockedDOTest extends GenericObjectTest<MockedDO>
 		MockedDO notEqualObject5 = new MockedDO();
 		MockedDO notEqualObject6 = new MockedDO();
 
-		notEqualObject4.setId(4);
+		notEqualObject4.setId(4L);
 		notEqualObject4.setCreatedTimeStamp(1);
 		notEqualObject4.setModifiedTimeStamp(1);
 		notEqualObject4.setExampleStringProperty("HELLO");
 
-		notEqualObject5.setId(4);
+		notEqualObject5.setId(4L);
 		notEqualObject5.setCreatedTimeStamp(2);
 		notEqualObject5.setModifiedTimeStamp(3);
 		notEqualObject5.setExampleStringProperty("HELLO");
 
-		notEqualObject6.setId(4);
+		notEqualObject6.setId(4L);
 		notEqualObject6.setCreatedTimeStamp(2);
 		notEqualObject6.setModifiedTimeStamp(4);
 		notEqualObject6.setExampleStringProperty("WORLD");

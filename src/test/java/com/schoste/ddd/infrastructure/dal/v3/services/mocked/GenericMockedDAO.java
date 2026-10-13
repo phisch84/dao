@@ -22,11 +22,11 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  *
  * @param <T> the type of the data object (DO) to access
  */
-public abstract class GenericMockedDAO<T extends GenericDataObject<Integer>> extends GenericDAO<Integer, T>
+public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extends GenericDAO<Long, T>
 {
-	protected Map<Integer, T> dataObjects = new HashMap<Integer, T>();
-	protected Iterator<Integer> itDataObjectIds = null;
-	protected int lastDataObjectId = 0;
+	protected Map<Long, T> dataObjects = new HashMap<Long, T>();
+	protected Iterator<Long> itDataObjectIds = null;
+	protected long lastDataObjectId = 0;
 	
 	/**
 	 * {@inheritDoc}
@@ -42,7 +42,7 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Integer>> ext
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected synchronized T doGet(Integer id) throws Exception
+	protected synchronized T doGet(Long id) throws Exception
 	{
 		if (this.isVirtualId(id))
 		{
@@ -54,7 +54,7 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Integer>> ext
 				return null;
 			}
 
-			Integer doID = this.itDataObjectIds.next();
+			Long doID = this.itDataObjectIds.next();
 
 			if (this.dataObjects.containsKey(doID)) return this.dataObjects.get(doID);
 			else return null;
@@ -145,9 +145,9 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Integer>> ext
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected synchronized void doDelete(Integer[] dataObjectIds) throws Exception
+	protected synchronized void doDelete(Long[] dataObjectIds) throws Exception
 	{
-		for (int dataObjectId : dataObjectIds) 
+		for (long dataObjectId : dataObjectIds) 
 		{
 			T dataObj = this.dataObjects.remove(dataObjectId);
 

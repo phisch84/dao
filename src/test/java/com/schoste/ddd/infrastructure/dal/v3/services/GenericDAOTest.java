@@ -57,7 +57,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	 * @param id the id of the existing data object
 	 * @return a data object or null if not found
 	 */
-	protected abstract DO getExistingDataObject(int id);
+	protected abstract DO getExistingDataObject(long id);
 
 	/**
 	 * Gets a (virtual or actual) identifier for which no data object will be found
@@ -185,7 +185,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 
 		for (int i=0; i<NUM_DATA_OBJECTS; i++)
 		{
-			DO dataObject = this.getDataAccessObject().createDataObject(0, "testCreateDataObjectAndVirtualId", i);
+			DO dataObject = this.getDataAccessObject().createDataObject(0L, "testCreateDataObjectAndVirtualId", i);
 
 			Assert.assertNotNull(dataObject);
 			Assert.assertTrue(this.getDataAccessObject().isVirtualId(dataObject.getId()));
@@ -249,7 +249,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 
 		for (int i=0; i<NUM_DATA_OBJECTS; i++)
 		{
-			DO dataObject = this.createDataObject(-1, "testGetMany", i);
+			DO dataObject = this.createDataObject(-1L, "testGetMany", i);
 			
 			this.getDataAccessObject().save(dataObject);
 			
@@ -326,9 +326,9 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		@SuppressWarnings("unused")
 		Collection<DO> dataObjects = this.getDataAccessObject().getAll().toList();
 		
-		DO dataObject1 = this.getExistingDataObject(2);
+		DO dataObject1 = this.getExistingDataObject(2L);
 		DO dataObject2 = this.getExistingDataObject(numOfDataObjects-1);
-		DO dataObject3 = this.getExistingDataObject(1);
+		DO dataObject3 = this.getExistingDataObject(1L);
 		   dataObject3.setIsDeleted(true);
 		
 		Thread.sleep(100);
@@ -370,13 +370,13 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 
 		for (int i=0; i<numOfDataObjects; i++)
 		{
-			DO dataObject = this.createDataObject(-1, "testGetRecentCreatedAndSaved", i);
+			DO dataObject = this.createDataObject(-1L, "testGetRecentCreatedAndSaved", i);
 			
 			this.getDataAccessObject().save(dataObject);
 		}
 
 		// a data object that is flagged as deleted by still exists in the storage. It should not be returned by getRecent()
-		DO deletedDataObject = this.createDataObject(-1, "testGetRecentCreatedAndSaved", (numOfDataObjects+1));
+		DO deletedDataObject = this.createDataObject(-1L, "testGetRecentCreatedAndSaved", (numOfDataObjects+1));
 		   deletedDataObject.setIsDeleted(true);
 
 		this.getDataAccessObject().save(deletedDataObject);
@@ -419,11 +419,11 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		for (int i=0; i<numOfDataObjects; i++)
 		{
 			@SuppressWarnings("unused")
-			DO dataObject = this.createDataObject(-1, "testGetRecentCreatedNotSaved", i);
+			DO dataObject = this.createDataObject(-1L, "testGetRecentCreatedNotSaved", i);
 		}
 
 		// a data object that is flagged as deleted by still exists in the storage. It should not be returned by getRecent()
-		DO deletedDataObject = this.createDataObject(-1, "testGetRecentCreatedNotSaved", (numOfDataObjects+1));
+		DO deletedDataObject = this.createDataObject(-1L, "testGetRecentCreatedNotSaved", (numOfDataObjects+1));
 		   deletedDataObject.setIsDeleted(true);
 
 		Thread.sleep(100);
@@ -677,11 +677,12 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testSave() throws Exception
 	{
-		DO dataObject = this.createDataObject(0, "testSave");
-		
+		DO dataObject = this.createDataObject(-1L, "testSave");
+
 		this.getDataAccessObject().save(dataObject);
 		
-		Assert.assertNotEquals((Integer) 0, dataObject.getId());
+		Assert.assertNotEquals(-1, dataObject.getId());
+		Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObject.getId()));
 		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
 	}
 	
@@ -694,7 +695,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testSaveExisting() throws Exception
 	{
-		DO dataObject = this.getExistingDataObject(1);
+		DO dataObject = this.getExistingDataObject(1L);
 		ID id = dataObject.getId();
 		long modTs = dataObject.getModifiedTimeStamp();
 		
@@ -703,7 +704,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		this.modifyDataObject(dataObject, "testSaveExisting");
 		this.getDataAccessObject().save(dataObject);
 		
-		Assert.assertEquals((Integer) id, dataObject.getId());
+		Assert.assertEquals((Long) id, dataObject.getId());
 		Assert.assertTrue(modTs < dataObject.getModifiedTimeStamp());
 	}
 
@@ -716,7 +717,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testSaveAndGetExisting() throws Exception
 	{
-		DO newObject = this.createDataObject(0, "testSaveAndGetExisting");
+		DO newObject = this.createDataObject(-1L, "testSaveAndGetExisting");
 		
 		this.getDataAccessObject().save(newObject);
 		
@@ -724,7 +725,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		DO dataObject = this.getDataAccessObject().get(newObjectId);
 		
 		Assert.assertNotNull(dataObject);
-		Assert.assertNotEquals((Integer) 0, dataObject.getId());
+		Assert.assertNotEquals(0, dataObject.getId());
 		Assert.assertNotEquals(0, dataObject.getModifiedTimeStamp());
 	}
 
@@ -737,7 +738,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testDelete() throws Exception
 	{
-		DO dataObject = this.createDataObject(0, "testDelete");
+		DO dataObject = this.createDataObject(0L, "testDelete");
 		
 		this.getDataAccessObject().save(dataObject);
 		
@@ -771,7 +772,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testSaveNegativeId() throws Exception
 	{
-		DO dataObject = this.createDataObject(-1, "testSaveNegativeId");
+		DO dataObject = this.createDataObject(-1L, "testSaveNegativeId");
 		
 		this.getDataAccessObject().save(dataObject);
 		
@@ -790,8 +791,8 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testDeleteNegativeId() throws Exception
 	{
-		DO dataObjectToSave = this.createDataObject(-1, "testDeleteNegativeId");
-		DO dataObjectNotToSave = this.createDataObject(-1, "testDeleteNegativeId");
+		DO dataObjectToSave = this.createDataObject(-1L, "testDeleteNegativeId");
+		DO dataObjectNotToSave = this.createDataObject(-1L, "testDeleteNegativeId");
 		
 		this.getDataAccessObject().delete(dataObjectNotToSave);		
 		this.getDataAccessObject().save(dataObjectToSave);
@@ -819,7 +820,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		
 		for (int i=0; i<NUM_DATA_OBJECTS; i++)
 		{
-			dataObjects.add(this.createDataObject(0, "testSaveMany", i));
+			dataObjects.add(this.createDataObject(0L, "testSaveMany", i));
 		}
 
 		this.getDataAccessObject().save(dataObjects);
@@ -851,7 +852,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		
 		for (int i=0; i<NUM_DATA_OBJECTS; i++)
 		{
-			DO dataObject = this.createDataObject(0, "testDeleteMany", i);
+			DO dataObject = this.createDataObject(0L, "testDeleteMany", i);
 			
 			this.getDataAccessObject().save(dataObject);
 			
@@ -886,7 +887,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 
 		for (int i=0; i<NUM_DATA_OBJECTS; i++)
 		{
-			DO dataObject = this.createDataObject(0, "testDeleteManyIds", i);
+			DO dataObject = this.createDataObject(0L, "testDeleteManyIds", i);
 			
 			this.getDataAccessObject().save(dataObject);
 			

@@ -15,9 +15,9 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericDefaultDataObjectLo
  * Mock implementation of {@link GenericDefaultDataObjectLoader} for unit testing
  */
 @Component
-public class MockedDefaultDataObjectLoaderImpl extends GenericDefaultDataObjectLoader<Integer, Integer, MockedDO> implements InitializingBean
+public class MockedDefaultDataObjectLoaderImpl extends GenericDefaultDataObjectLoader<Long, Long, MockedDO> implements InitializingBean
 {
-    protected Iterator<Integer> filterInIterator;
+    protected Iterator<Long> filterInIterator;
 
     /**
      * Creates a new instance of the loader
@@ -25,7 +25,7 @@ public class MockedDefaultDataObjectLoaderImpl extends GenericDefaultDataObjectL
      * @param dataAccessObject the DAO for which the loader was created
      * @param sourceRecordToDataObjConversionFn UNUSED
      */
-    public MockedDefaultDataObjectLoaderImpl(GenericDataAccessObject<Integer, MockedDO> dataAccessObject, Function<Integer, MockedDO> sourceRecordTodataObjConversionFn)
+    public MockedDefaultDataObjectLoaderImpl(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<Long, MockedDO> sourceRecordTodataObjConversionFn)
     {
         super(dataAccessObject, sourceRecordTodataObjConversionFn);
 
@@ -38,7 +38,7 @@ public class MockedDefaultDataObjectLoaderImpl extends GenericDefaultDataObjectL
      * @param dataAccessObject the DAO for which the loader was created
      * @param sourceRecordToDataObjConversionFn UNUSED
      */
-    public MockedDefaultDataObjectLoaderImpl(GenericDataAccessObject<Integer, MockedDO> dataAccessObject, Function<Integer, MockedDO> sourceRecordTodataObjConversionFn, Set<Integer> idsToFilterIn)
+    public MockedDefaultDataObjectLoaderImpl(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<Long, MockedDO> sourceRecordTodataObjConversionFn, Set<Long> idsToFilterIn)
     {
         super(dataAccessObject, sourceRecordTodataObjConversionFn, idsToFilterIn);
 
@@ -55,11 +55,11 @@ public class MockedDefaultDataObjectLoaderImpl extends GenericDefaultDataObjectL
     }
 
     @Override
-    protected Integer getNextSourceRecord() 
+    protected Long getNextSourceRecord() 
     {
         if ((this.idsToFilterIn.size() > 0) && this.filterInIterator.hasNext()) return this.filterInIterator.next();
 
-        if (this.idsToFilterIn.size() < 1) return -1;
+        if (this.idsToFilterIn.size() < 1) return -1L;
 
         return null;
     }

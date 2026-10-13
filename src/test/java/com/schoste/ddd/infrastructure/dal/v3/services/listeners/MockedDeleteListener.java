@@ -12,12 +12,12 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */
-public class MockedDeleteListener<T extends GenericDataObject<Integer>> implements DeleteListener<Integer, T>
+public class MockedDeleteListener<T extends GenericDataObject<Long>> implements DeleteListener<Long, T>
 {
 	protected Collection<T> dosReceivedBeforeDeleting = new ArrayList<T>();
 	protected Set<T> dosReceivedAfterDeleting = new HashSet<T>();
-	protected Collection<Integer> idsReceivedBeforeDeleting = new ArrayList<>();
-	protected Set<Integer> idsReceivedAfterDeleting = new HashSet<>();
+	protected Collection<Long> idsReceivedBeforeDeleting = new ArrayList<>();
+	protected Set<Long> idsReceivedAfterDeleting = new HashSet<>();
 
 	/**
 	 * {@inheritDoc}
@@ -48,9 +48,9 @@ public class MockedDeleteListener<T extends GenericDataObject<Integer>> implemen
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Integer[] onBeforeDeleting(Integer[] dataObjectIdsToDelete)
+	public Long[] onBeforeDeleting(Long[] dataObjectIdsToDelete)
 	{
-		for (int dataObjectIdToDelete : dataObjectIdsToDelete) this.idsReceivedBeforeDeleting.add(dataObjectIdToDelete);
+		for (long dataObjectIdToDelete : dataObjectIdsToDelete) this.idsReceivedBeforeDeleting.add(dataObjectIdToDelete);
 
 		return dataObjectIdsToDelete;
 	}
@@ -77,9 +77,9 @@ public class MockedDeleteListener<T extends GenericDataObject<Integer>> implemen
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void onAfterDeleted(Integer[] dataObjectIdsDeleted)
+	public void onAfterDeleted(Long[] dataObjectIdsDeleted)
 	{
-		for (int dataObjectIdDeleted : dataObjectIdsDeleted) this.idsReceivedAfterDeleting.add(dataObjectIdDeleted);
+		for (long dataObjectIdDeleted : dataObjectIdsDeleted) this.idsReceivedAfterDeleting.add(dataObjectIdDeleted);
 	}
 
 	/**
@@ -87,9 +87,9 @@ public class MockedDeleteListener<T extends GenericDataObject<Integer>> implemen
 	 * 
 	 * @return a collection of data objects
 	 */
-	public Collection<Integer> getDOsReceivedBeforeDeleting()
+	public Collection<Long> getDOsReceivedBeforeDeleting()
 	{
-		Collection<Integer> ids = new ArrayList<>();
+		Collection<Long> ids = new ArrayList<>();
 
 		ids.addAll(this.idsReceivedBeforeDeleting);
 
@@ -103,9 +103,9 @@ public class MockedDeleteListener<T extends GenericDataObject<Integer>> implemen
 	 * 
 	 * @return a collection of data objects
 	 */
-	public Collection<Integer> getDOsReceivedAfterDeleting()
+	public Collection<Long> getDOsReceivedAfterDeleting()
 	{
-		Collection<Integer> ids = new ArrayList<>();
+		Collection<Long> ids = new ArrayList<>();
 
 		ids.addAll(this.idsReceivedAfterDeleting);
 

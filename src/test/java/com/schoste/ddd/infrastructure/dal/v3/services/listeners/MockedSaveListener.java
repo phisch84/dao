@@ -12,7 +12,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */
-public class MockedSaveListener<T extends GenericDataObject<Integer>> implements SaveListener<Integer, T>
+public class MockedSaveListener<T extends GenericDataObject<Long>> implements SaveListener<Long, T>
 {
 	protected Collection<T> dosReceivedBeforeSaving = new ArrayList<>();
 	protected Set<T> dosReceivedAfterSaving = new HashSet<>();
