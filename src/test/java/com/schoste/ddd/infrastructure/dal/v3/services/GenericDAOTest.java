@@ -360,13 +360,14 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testGetRecentCreatedAndSaved() throws Exception
 	{
-		int numOfDataObjects = 5;
+		int numOfExpectedDOs = 5;
 
-		this.doTestGetRecentCreatedAndSaved(numOfDataObjects);
+		this.doTestGetRecentCreatedAndSaved(numOfExpectedDOs);
 	}
 
-	protected void doTestGetRecentCreatedAndSaved(int numOfDataObjects) throws Exception
+	protected void doTestGetRecentCreatedAndSaved(int numOfExpectedDOs) throws Exception
 	{
+		int numOfDataObjects = 5;
 		int numOfExpectedDOLoaders = 2;
 
 		// call getRecent() to update the DAO's internal last modification time stamp 
@@ -400,7 +401,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 
 		Assert.assertTrue(this.getDataAccessObject().getLastModifiedTimeStamp() >= daoModTS);
 		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(numOfExpectedDOLoaders));
-		Assert.assertEquals(numOfDataObjects, dataObjects.size());
+		Assert.assertEquals(numOfExpectedDOs, dataObjects.size());
 	}
 
 	/**
