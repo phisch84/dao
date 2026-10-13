@@ -8,7 +8,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
  * Default boiler plate implementation of the {@link RecentDataObjectLoader} interface.
- * The check if a data object shall be discarded or reported is handled by the source-record-to-data-object conversion function ({@link sourceRecordToDataObjConversionFn}).
+ * The check if a data object shall be discarded or reported is handled by the ({@link filterInDataObjAndUpdateDAO}) method.
  * The body of this method is defined in the data access object ({@link dataAccessObject}).
  * 
  * @param <SR> the data type of a potential source record that needs to be converted into the actual data object
@@ -21,6 +21,15 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
     protected long maxTS;
     protected boolean returnDeleted;
 
+    /**
+     * Creates a new instance
+     * 
+     * @param dataAccessObject the DAO for which the loader was created
+     * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
+     * @param lastModTS the modification date time stamp for filtering. Data objects with a smaller time stamp will be filtered out
+     * @param returnDeleted if true, data objects flagged as deleted (see {@link GenericDataObject#getIsDeleted()}) will be returned too.
+     * @throws IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
+     */
     public GenericRecentDataObjectLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn, long lastModTS, boolean returnDeleted) throws IllegalArgumentException 
     {
         super(dataAccessObject, sourceRecordToDataObjConversionFn);

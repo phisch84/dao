@@ -6,7 +6,8 @@ import java.util.Spliterator;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
- * Interface to the implementation of a data object loader (DOL) that is used in {@link GenericDAO#getAll()}
+ * Interface to the implementation of a data object loader (DOL) that is used in {@link GenericDAO#getAll()},
+ * {@link GenericDAO#get(Serializable[])} and {@link GenericDAO#get(java.util.Collection)}
  * 
  * @param <SR> the data type of a potential source record (SR) that can be turned into a data object
  * @param <ID> te data type of the data objects' identifier (see {@link GenericDataObject#getId()} and {@link GenericDataObject#setId(Serializable)})

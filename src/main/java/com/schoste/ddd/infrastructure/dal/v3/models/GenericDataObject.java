@@ -87,7 +87,7 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 	
 	/**
-	 * Sets the deleted-flag in the database
+	 * Sets the deleted-flag
 	 * 
 	 * @param isDeleted true if the object is marked as deleted. False otherwise
 	 */
@@ -97,7 +97,7 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 	
 	/**
-	 * Gets the deleted-flag of the object in the database
+	 * Gets the deleted-flag of the object
 	 * 
 	 * @return true if the object is marked as deleted. False otherwise
 	 */
@@ -155,6 +155,8 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 		
 		if (createdTimeStamp != other.createdTimeStamp) return false;
 		if (modifiedTimeStamp != other.modifiedTimeStamp) return false;
+		if ((id == null) && (other.id != null)) return false;
+		if ((id == null) && (other.id == null)) return true;
 		if (!id.equals(other.id)) return false;
 
 		return true;

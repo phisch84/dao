@@ -6,7 +6,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
  * Extension of the {@link DataObjectLoader} (DOL) interface to identify implementations of DOLs used in the DAO methods
- * {@link GenericDAO#get(Serializable)}, {@link GenericDAO#get(Serializable[])}, {@link GenericDAO#get(java.util.Collection)} and
+ * {@link GenericDAO#get(Serializable[])}, {@link GenericDAO#get(java.util.Collection)} and
  * {@link GenericDAO#getAll()} method.
  * These loaders are supposed to ignore the data object's (DO's) modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}
  * and its deleted flag {@link GenericDataObject#getIsDeleted()}.

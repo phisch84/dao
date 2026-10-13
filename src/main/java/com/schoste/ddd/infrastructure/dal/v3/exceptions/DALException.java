@@ -13,12 +13,18 @@ public class DALException extends Exception
 	private static final long serialVersionUID = 3159659145507596391L;
 
 	/**
-	 * Instance to a handler for {@see DALException}.
-	 * If not null {@ DALExceptionHandler#onExceptionCreated(DALException)} will be
-	 * called whenever a {@see DALException} is created.
+	 * Instance to a handler for {@link DALException}.
+	 * If not null {@link DALExceptionHandler#onExceptionCreated(DALException)} will be
+	 * called whenever a {@link DALException} is created.
 	 */
 	public static DALExceptionHandler handler = null;
 
+	/**
+	 * Called whenever a new {@link DALException} is created.
+	 * If a handler is present {@link DALExceptionHandler#onExceptionCreated(DALException)} will be called
+	 * 
+	 * @param exception the exception that was created
+	 */
 	protected static void invokeHandler(DALException exception)
 	{
 		try

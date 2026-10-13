@@ -3,9 +3,9 @@ package com.schoste.ddd.infrastructure.dal.v3.services;
 import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
 
 /**
- * Version 2 interface to a handler of {@see DALException}
- * If there is an implementation and the instance is set at {@see DALException#handler}, this handler is
- * called whenever a {@see DALException} is created.
+ * Version 3 interface to a handler of {@link DALException}
+ * If there is an implementation and the instance is set at {@link DALException#handler}, this handler is
+ * called whenever a {@link DALException} is created.
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
@@ -13,7 +13,7 @@ import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
 public interface DALExceptionHandler
 {
 	/**
-	 * Called by constructors of {@see DALException}
+	 * Called by constructors of {@link DALException}
 	 * 
 	 * @param exception the exception that was created
 	 */

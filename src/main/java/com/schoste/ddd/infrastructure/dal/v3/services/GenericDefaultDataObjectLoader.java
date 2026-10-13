@@ -19,12 +19,28 @@ abstract public class GenericDefaultDataObjectLoader<SR, ID extends Serializable
 {
     protected Set<ID> idsToFilterIn;
 
+    /**
+     * Creates a new instance that will not filter for specific data object ids ({@link GenericDataObject#getId()})
+     * 
+     * @param dataAccessObject the DAO for which the loader was created
+     * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
+     * @throws IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
+     */
     public GenericDefaultDataObjectLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn) throws IllegalArgumentException
     {
         super(dataAccessObject, sourceRecordToDataObjConversionFn);
         this.idsToFilterIn = new HashSet<>();
     }
 
+    /**
+     * Creates a new instance that will specific data object ids ({@link GenericDataObject#getId()})
+     * if at least one id to filter for was provided
+     * 
+     * @param dataAccessObject the DAO for which the loader was created
+     * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
+     * @param idsToFilterIn a set of data object ids ({@link GenericDataObject#getId()}) to filter the source record for. May be null (then no filtering is done).
+     * @throws IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
+     */
     public GenericDefaultDataObjectLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn, Set<ID> idsToFilterIn) throws IllegalArgumentException
     {
         super(dataAccessObject, sourceRecordToDataObjConversionFn);

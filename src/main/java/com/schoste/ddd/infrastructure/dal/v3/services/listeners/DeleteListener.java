@@ -9,6 +9,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * Interface to a listener which is notified before or after a data object is or was deleted.
  * All the methods are invoked in the same thread which will perform the actual deletion operation.
  * 
+ * @param <ID> the data type of the data object's unique identifier
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */

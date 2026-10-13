@@ -27,6 +27,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
      * at the data access object provided to this loader after the actual data object has been retrieved
      * 
      * @param dataObject the data object that was loaded and is about to be returned
+     * @return the data object for which the event was raised.
      */
     protected DO raiseAfterGet(DO dataObject)
     {
@@ -42,6 +43,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
      * 
      * @param dataAccessObject the DAO for which the loader was created
      * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
+     * @exception IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
      */
     public DataObjectLoaderBase(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn) throws IllegalArgumentException
     {
@@ -88,7 +90,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
      * May be implemented by the deriving class.
      * Unused in this implementation, but can be overwritten and implemented if needed.
      * 
-     * @return an instance of a {@link Spliterator} with a subset of elements
+     * @return usually an instance of a {@link Spliterator} with a subset of elements. In this implementation it always returns null.
      */
     @Override
     public Spliterator<DO> trySplit()
@@ -98,7 +100,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
 
     /**
      * Implements {@link Spliterator#estimateSize()}.
-     * Needs to be implemented by the deriving class.
+     * May be implemented by the deriving class.
      * 
      * @return an estimated amount of elements available. {@link Long#MAX_VALUE} in case no estimate can be given.
      */
@@ -123,8 +125,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
 
     /**
      * Implements {@link AutoCloseable#close()}.
-     * Called by {@link GenericLazyLoader#run()} which will be called by the encapsulating {@link Stream} class
-     * when it is closed.
+     * Called by the encapsulating {@link Stream} class when it is closed.
      */
     abstract public void close();
 }

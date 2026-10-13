@@ -23,8 +23,8 @@ public @interface AutoSet
 {
 	/**
 	 * Gets or sets the class which defines the method to use to get the value.
-	 * If this value is null, the converter will try to find a class named {@see AutoConvert#className()}.
-	 * If neither {@see AutoConvert#clazz()} nor {@see AutoConvert#className()} are defined,
+	 * If this value is null, the converter will try to find a class named {@link AutoSet#className()}.
+	 * If neither {@link AutoSet#clazz()} nor {@link AutoSet#className()} are defined,
 	 * the converter will search the conversion methods in the instance of the source model.
 	 * 
 	 * @return a class

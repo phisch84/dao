@@ -16,6 +16,7 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoa
  * When implementing the for a DAO the {@link GenericDefaultDataObjectLoader} and {@link GenericRecentDataObjectLoader}
  * calls to {@link GetListener#onAfterGet(GenericDataObject)} must be made there.
  * 
+ * @param <ID> the data type of the data object's unique identifier
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
