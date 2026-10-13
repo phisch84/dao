@@ -360,7 +360,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	@Test
 	public void testGetRecentCreatedAndSaved() throws Exception
 	{
-		int numOfExpectedDOs = 5;
+		int numOfExpectedDOs = 5; // 5 created  (1 flagged deleted; to be ignored)
 
 		this.doTestGetRecentCreatedAndSaved(numOfExpectedDOs);
 	}
