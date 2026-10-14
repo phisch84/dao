@@ -7,8 +7,9 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 /**
  * Interface to a {@link DataObjectLoader} implementation which can filter out data objects (DO)
  * for source records (SR) flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) and records
- * that were not modified since the last call to {@link GenericDAO#getRecent(long, boolean)}
- * ({@link GenericDataObject#getModifiedTimeStamp()} <= {@link GenericDAO#getLastModifiedTimeStamp()})
+ * that were not modified since the last call to {@link GenericDAO#getRecent(long, boolean)}.
+ * ({@link GenericDataObject#getModifiedTimeStamp()} <= {@link GenericDAO#getLastModifiedTimeStamp()}), or
+ * ({@link GenericDataObject#getModifiedTimeStamp()} <= a custom time stamp if provided).
  * 
  * @param <SR> the data type of a potential source record that can be turned into a data object
  * @param <ID> te data type of the data objects' identifier (see {@link GenericDataObject#getId()} and {@link GenericDataObject#setId(Serializable)})

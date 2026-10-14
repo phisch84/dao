@@ -18,6 +18,10 @@ import com.schoste.ddd.testing.v1.GenericObjectTest;
  */
 public class MockedDOTest extends GenericObjectTest<MockedDO>
 {
+	/**
+	 * {@inheritDoc}
+	 * @see com.schoste.ddd.testing.v1.GenericObjectTest#getEqualObjects()
+	 */
 	@Override
 	protected Map<String, Collection<MockedDO>> getEqualObjects() 
 	{
@@ -62,6 +66,10 @@ public class MockedDOTest extends GenericObjectTest<MockedDO>
 		return equalObjectsSet;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * @see com.schoste.ddd.testing.v1.GenericObjectTest#getNotEqualObjects()
+	 */
 	@Override
 	protected Map<String, Collection<MockedDO>> getNotEqualObjects() 
 	{

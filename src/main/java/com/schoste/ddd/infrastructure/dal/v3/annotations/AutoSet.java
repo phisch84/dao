@@ -33,7 +33,7 @@ public @interface AutoSet
 	
 	/**
 	 * Gets or sets the name of the class which defines the method to use to get the value.
-	 * If {@see AutoConvert#clazz()} is not null, this property is ignored.
+	 * If {@link AutoSet#clazz()} is not null, this property is ignored.
 	 * 
 	 * @return a full class name (with package name)
 	 */

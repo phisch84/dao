@@ -84,6 +84,14 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extend
 		return null;
 	}
 
+	/**
+	 * Gets all data objects with the given ids if they are present in this DAO
+	 * 
+	 * @param ids the ids of the data objects to get
+	 * @return a collection of data objects that existed in the DAO if their id is among the requested ids
+	 * @throws Exception re-throws every exception
+	 */
+	@SuppressWarnings("unlikely-arg-type")
 	protected Collection<T> getSomeDOs(Integer[] ids) throws Exception
 	{
 		Collection<T> dataObjects = this.dataObjects.values();

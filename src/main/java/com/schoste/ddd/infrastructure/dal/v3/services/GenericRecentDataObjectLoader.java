@@ -9,7 +9,6 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 /**
  * Default boiler plate implementation of the {@link RecentDataObjectLoader} interface.
  * The check if a data object shall be discarded or reported is handled by the ({@link filterInDataObjAndUpdateDAO}) method.
- * The body of this method is defined in the data access object ({@link dataAccessObject}).
  * 
  * @param <SR> the data type of a potential source record that needs to be converted into the actual data object
  * @param <ID> the data type of the data object's identifier
@@ -26,7 +25,7 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
      * 
      * @param dataAccessObject the DAO for which the loader was created
      * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
-     * @param lastModTS the modification date time stamp for filtering. Data objects with a smaller time stamp will be filtered out
+     * @param lastModTS the modification date time stamp for filtering. Data objects with a smaller or equal time stamp will be filtered out
      * @param returnDeleted if true, data objects flagged as deleted (see {@link GenericDataObject#getIsDeleted()}) will be returned too.
      * @throws IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
      */
@@ -50,7 +49,7 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
      * @param dataObj the data object to evaluate
      * @return true if the data object shall be reported, false if it shall be discarded
      */
-    protected boolean filterInDataObjAndUpdateDAO(DO dataObj)
+    protected boolean filterInDataObjAndUpdateMaxTS(DO dataObj)
     {
         if (dataObj == null) return false;
         if (dataObj.getIsDeleted() && !this.returnDeleted) return false;
@@ -71,7 +70,7 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
     /**
      * Implements {@link java.util.Spliterator#tryAdvance(Consumer)}.
      * Polls source records via {@link #getNextSourceRecord()} until one of them yields a data object to report
-     * (see {@link #filterInDataObjAndUpdateDAO(GenericDataObject)}). Before a data object is reported,
+     * (see {@link #filterInDataObjAndUpdateMaxTS(GenericDataObject)}). Before a data object is reported,
      * {@link #raiseAfterGet(GenericDataObject)} is called.
      * The loading ends if there are no more source records or if a source record can't be converted to a data object
      * (the conversion function returns null).
@@ -97,7 +96,7 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
                 if (dataObj == null) break;
 
-                if (this.filterInDataObjAndUpdateDAO(dataObj))
+                if (this.filterInDataObjAndUpdateMaxTS(dataObj))
                 {
                     // raise the get-listener after the DO was loaded but before it is accepted in the output stream
                     dataObj = this.raiseAfterGet(dataObj);

@@ -18,6 +18,7 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoa
  * When implementing data object loaders for a DAO, calls to {@link GetListener#onAfterGet(GenericDataObject)} must be made there.
  * 
  * @param <ID> the data type of the data object's unique identifier
+ * @param <DO> the data type of the data object
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
@@ -69,7 +70,7 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}
 	 * the call is supposed to be made by the {@link GenericDefaultDataObjectLoader} and {@link GenericRecentDataObjectLoader}
 	 * implementation. If that happens depends on the actual implementation of the loaders.
-	 * In this case the returned DO is the one that is passed to the next listener and finally returned to the caller.
+	 * In this case the returned DO is the one that is passed to another listener (if present) and finally returned to the caller.
 	 * 
 	 * @param dataObject the data object that was loaded and will be returned
 	 * @return the data object to return to the caller (usually the one provided as parameter)

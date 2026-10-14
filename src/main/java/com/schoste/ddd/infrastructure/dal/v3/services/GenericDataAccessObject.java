@@ -75,7 +75,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public DO get(ID id) throws DALException;
 
 	/**
-	 * Gets all data objects from the data source by its ids.
+	 * Gets all data objects from the data source by its ids. If an empty id-array was provided, all available data objects are returned.
 	 * This method also returns data objects flagged deleted (if returned by the storage)
 	 * or object that were created or modified after the last recorded modification.
 	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
@@ -151,7 +151,10 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Persists any changes to a data object (DO) to the underlying data source and updates
-	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}
+	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}.
+	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
+	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
+	 * return false for the given data object.
 	 * 
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
@@ -162,6 +165,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	/**
 	 * Persists any changes to a data object (DO) to the underlying data source and updates
 	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}
+	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
+	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
+	 * return false for the given data object.
 	 * 
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null or an instance of an incompatible class
@@ -172,6 +178,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	/**
 	 * Persists any changes to the data objects (DOs) to the underlying data source and updates
 	 * the DOs' modification time stamps {@link GenericDataObject#getModifiedTimeStamp()}
+	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
+	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
+	 * return false for a given data object.
 	 * 
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
@@ -182,6 +191,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	/**
 	 * Persists any changes to the data objects (DOs) to the underlying data source and updates
 	 * the DOs' modification time stamps {@link GenericDataObject#getModifiedTimeStamp()}
+	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
+	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
+	 * return false for a given data object.
 	 * 
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or one element is an instance of an incompatible class

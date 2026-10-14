@@ -10,10 +10,11 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * All the methods are invoked in the same thread which will perform the actual saving operation.
  * 
  * @param <ID> the data type of the data object's unique identifier
+ * @param <DO> the data type of the data object
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
-public interface SaveListener<ID extends Serializable, T extends GenericDataObject<ID>>
+public interface SaveListener<ID extends Serializable, DO extends GenericDataObject<ID>>
 {
 	/**
 	 * Called by the DAO before saving the dataObjectToSave.
@@ -24,7 +25,7 @@ public interface SaveListener<ID extends Serializable, T extends GenericDataObje
 	 * @param dataObjectToSave the data object to save
 	 * @return true if the DAO should save the object or false if it should discard it
 	 */
-	boolean onBeforeSaving(T dataObjectToSave);
+	boolean onBeforeSaving(DO dataObjectToSave);
 
 	/**
 	 * Called by the DAO before saving any of the DOs in dataObjectsToSave.
@@ -35,19 +36,19 @@ public interface SaveListener<ID extends Serializable, T extends GenericDataObje
 	 * @param dataObjectsToSave a collection of data objects to save
 	 * @return true if the DAO should save the objects or false if it should discard them
 	 */
-	boolean onBeforeSaving(Collection<T> dataObjectsToSave);
+	boolean onBeforeSaving(Collection<DO> dataObjectsToSave);
 
 	/**
 	 * Called by the DAO after the DO was successfully saved.
 	 * 
 	 * @param dataObjectSaved the DO that was saved in the firing call
 	 */
-	void onAfterSaved(T dataObjectSaved);
+	void onAfterSaved(DO dataObjectSaved);
 
 	/**
 	 * Called by the DAO after the DOs were successfully saved.
 	 * 
 	 * @param dataObjectsSaved a collection of DOs that were saved in the firing call
 	 */
-	void onAfterSaved(Collection<T> dataObjectsSaved);
+	void onAfterSaved(Collection<DO> dataObjectsSaved);
 }

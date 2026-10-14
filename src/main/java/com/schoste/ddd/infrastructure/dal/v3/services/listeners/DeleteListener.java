@@ -10,10 +10,11 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * All the methods are invoked in the same thread which will perform the actual deletion operation.
  * 
  * @param <ID> the data type of the data object's unique identifier
+ * @param <DO> the data type of the data object
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *
  */
-public interface DeleteListener<ID extends Serializable, T extends GenericDataObject<ID>>
+public interface DeleteListener<ID extends Serializable, DO extends GenericDataObject<ID>>
 {
 	/**
 	 * Called by the DAO before deleting the dataObjectToDelete.
@@ -24,7 +25,7 @@ public interface DeleteListener<ID extends Serializable, T extends GenericDataOb
 	 * @param dataObjectToDelete the data object to delete
 	 * @return true if the DAO should delete the object or false if it should discard it
 	 */
-	boolean onBeforeDeleting(T dataObjectToDelete);
+	boolean onBeforeDeleting(DO dataObjectToDelete);
 
 	/**
 	 * Called by the DAO before deleting any of the DOs in dataObjectsToDelete.
@@ -35,7 +36,7 @@ public interface DeleteListener<ID extends Serializable, T extends GenericDataOb
 	 * @param dataObjectsToDelete a collection of data objects to delete
 	 * @return true if the DAO should delete the objects or false if it should discard them
 	 */
-	boolean onBeforeDeleting(Collection<T> dataObjectsToDelete);
+	boolean onBeforeDeleting(Collection<DO> dataObjectsToDelete);
 
 	/**
 	 * Called by the DAO before deleting any of the DOs with an id in dataObjectIdsToDelete.
@@ -54,14 +55,14 @@ public interface DeleteListener<ID extends Serializable, T extends GenericDataOb
 	 * 
 	 * @param dataObjectDeleted the DO that was deleted in the firing call
 	 */
-	void onAfterDeleted(T dataObjectDeleted);
+	void onAfterDeleted(DO dataObjectDeleted);
 
 	/**
 	 * Called by the DAO after the DOs were successfully deleted.
 	 * 
 	 * @param dataObjectsDeleted a collection of DOs that were deleted in the firing call
 	 */
-	void onAfterDeleted(Collection<T> dataObjectsDeleted);
+	void onAfterDeleted(Collection<DO> dataObjectsDeleted);
 
 	/**
 	 * Called by the DAO after the DOs were successfully deleted.

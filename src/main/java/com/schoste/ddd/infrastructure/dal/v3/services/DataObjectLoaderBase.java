@@ -24,10 +24,11 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
 
     /**
      * Calls {@link GetListener#onAfterGet(GenericDataObject)} for every {@link GetListener} registered
-     * at the data access object provided to this loader after the actual data object has been retrieved
+     * at the data access object provided to this loader after the actual data object has been retrieved.
+     * {@link GetListener#onAfterGet(GenericDataObject)} might change the data object or even return a completely different instance.
      * 
      * @param dataObject the data object that was loaded and is about to be returned
-     * @return the data object for which the event was raised.
+     * @return the data object received back by {@link GetListener#onAfterGet(GenericDataObject)}
      */
     protected DO raiseAfterGet(DO dataObject)
     {
@@ -125,7 +126,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
 
     /**
      * Implements {@link AutoCloseable#close()}.
-     * Called by the encapsulating {@link Stream} class when it is closed.
+     * Called by the {@link Stream#onClose(Runnable)} method of the encapsulating class when it is closed.
      */
     abstract public void close();
 }
