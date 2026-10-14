@@ -59,7 +59,6 @@ public class MockedDefaultDataObjectLoaderImpl extends GenericDefaultDataObjectL
      * 
      * @return the id of the next data object to load, or null if there are no more ids
      */
-    @SuppressWarnings("unchecked")
     @Override
     protected Long getNextSourceRecord()
     {

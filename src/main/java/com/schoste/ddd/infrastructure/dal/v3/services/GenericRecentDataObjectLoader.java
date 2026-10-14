@@ -75,8 +75,8 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
     /**
      * Gets the next source record from the data storage so it can be turned into a data object.
-     * If there are no more records or on error this method must return null, which ends the loading
-     * (see {@link #tryAdvance(Consumer)}).
+     * If there are no more records or on error this method must return null. This is the only way to signal the end of the data:
+     * {@link #tryAdvance(Consumer)} keeps calling this method until it returns null or a source record yields a data object to report.
      *
      * @return the next source record from the data storage or null if there are no more records or on error
      */
@@ -87,12 +87,11 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
      * Polls source records via {@link #getNextSourceRecord()} until one of them yields a data object to report
      * (see {@link #filterInDataObjAndUpdateMaxTS(GenericDataObject)}). Before a data object is reported,
      * {@link #raiseAfterGet(GenericDataObject)} is called.
-     * The loading ends if there are no more source records or if a source record can't be converted to a data object
-     * (the conversion function returns null).
-     * 
-     * When the loading ends, the last modification time stamp of the data access object is set to the biggest
-     * modification time stamp of the reported data objects. This happens either if the stream is consumed to its end or
-     * if it ends early because a source record can't be converted, but only if
+     * Source records which can't be converted to a data object (the conversion function returns null, e.g. because
+     * no data object was found) are skipped. The loading ends if there are no more source records.
+     *
+     * When the loading ends, i.e. the stream was consumed to its end, the last modification time stamp of the data access object
+     * is set to the biggest modification time stamp of the reported data objects. This only happens if
      * the time stamp given to the loader still equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()},
      * i.e. it was not overridden by the caller. It does not happen on error (exception).
      * 
@@ -110,8 +109,7 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
             {
                 DO dataObj = (DO) super.sourceRecordToDataObjConversionFn.apply(sourceRecord);
 
-                if (dataObj == null) break;
-
+                // source records without data object (not found or failed to load) are skipped by the filter
                 if (this.filterInDataObjAndUpdateMaxTS(dataObj))
                 {
                     // raise the get-listener after the DO was loaded but before it is accepted in the output stream

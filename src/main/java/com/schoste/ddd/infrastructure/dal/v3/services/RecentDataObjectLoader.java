@@ -11,7 +11,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * that were not modified after the DAO's most recent modification time stamp
  * ({@link GenericDataObject#getModifiedTimeStamp()} &lt;= {@link GenericDAO#getLastModifiedTimeStamp()}), or
  * after a custom time stamp if provided ({@link GenericDataObject#getModifiedTimeStamp()} &lt;= lastModTS).
- * The DAO's most recent modification time stamp is updated when the loading ends. When that is, depends on the implementation
+ * The DAO's most recent modification time stamp is updated when a stream of such a loader was consumed to its end
  * (see {@link GenericRecentDataObjectLoader#tryAdvance(java.util.function.Consumer)}).
  * Note that {@link GenericDAO} does not enforce this interface, as its loader factory methods return a {@link DataObjectLoader}.
  *

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDAO;
@@ -25,7 +24,6 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extends GenericDAO<Long, T>
 {
 	protected Map<Long, T> dataObjects = new HashMap<Long, T>();
-	protected Iterator<Long> itDataObjectIds = null;
 	protected long lastDataObjectId = 0;
 	
 	/**
@@ -40,7 +38,7 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extend
 
 	/**
 	 * Gets the ids of all data objects which are currently in the mocked storage.
-	 * Used by the mocked data object loader to determine the source records to load.
+	 * Used by the mocked data object loaders to determine the source records to load.
 	 * 
 	 * @return a copy of the ids of all data objects in the mocked storage
 	 */
@@ -51,34 +49,14 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extend
 
 	/**
 	 * Gets the data object with the given id from the mocked storage.
-	 * 
-	 * If the id is a virtual id, the method doesn't look for a data object with this id. Instead every call returns
-	 * the next data object of the mocked storage, and null once after all of them were returned.
-	 * {@link MockedRecentDataObjectLoaderImpl} relies on this behavior to iterate over all data objects.
-	 * 
-	 * @param id the id of the data object to get, or a virtual id to get the next data object of the mocked storage
-	 * @return the data object, or null if not found (or if there is no next data object)
+	 *
+	 * @param id the id of the data object to get
+	 * @return the data object, or null if not found
 	 * @throws Exception re-throws every exception
 	 */
 	@Override
 	protected synchronized T doGet(Long id) throws Exception
 	{
-		if (this.isVirtualId(id))
-		{
-			if (this.itDataObjectIds == null) this.itDataObjectIds = this.dataObjects.keySet().iterator();
-			if (!this.itDataObjectIds.hasNext())
-			{
-				this.itDataObjectIds = null;
-
-				return null;
-			}
-
-			Long doID = this.itDataObjectIds.next();
-
-			if (this.dataObjects.containsKey(doID)) return this.dataObjects.get(doID);
-			else return null;
-		}
-
 		if (this.dataObjects.containsKey(id)) return this.dataObjects.get(id);
 
 		return null;
