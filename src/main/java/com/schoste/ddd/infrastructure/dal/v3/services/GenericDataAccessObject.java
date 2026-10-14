@@ -23,17 +23,19 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 {
 	/**
 	 * Gets the milli-second unix time stamp of the most recent modification time/date
-	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
-	 * 
+	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent()} and {@link GenericDataAccessObject#getRecent(boolean)}.
+	 * {@link GenericDataAccessObject#getRecent(long, boolean)} uses its own time stamp and only compares it with this value
+	 * to decide whether this value is updated.
+	 *
 	 * @return the latest modification time stamp of data objects from the underlying data storage
 	 */
 	public long getLastModifiedTimeStamp();
 
 	/**
 	 * Override the milli-second unix time stamp of the most recent modification time/date of data objects
-	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
-	 * The time stamp is usually tracked by the DAO and updated when the stream returned by {@link GenericDataAccessObject#getRecent()}
-	 * or {@link GenericDataAccessObject#getRecent(boolean)} was consumed to its end.
+	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent()} and {@link GenericDataAccessObject#getRecent(boolean)}.
+	 * The time stamp is usually tracked by the DAO and updated by the data object loader when the stream returned by
+	 * {@link GenericDataAccessObject#getRecent()} or {@link GenericDataAccessObject#getRecent(boolean)} was consumed to its end.
 	 * 
 	 * @param newTS the value to overwrite the internal most recent modification time/date of data objects
 	 */
@@ -54,7 +56,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	DO createDataObject(Object... args) throws DALException;
 
 	/**
-	 * Determines if the provided identifier is a virtual indentifier.
+	 * Determines if the provided identifier is a virtual identifier.
 	 * Virtual identifiers mark data objects as not-persisted (yet) in the underlying storage
 	 * 
 	 * @param id the id to test
@@ -65,7 +67,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	/**
 	 * Gets a data object from the data source by its id.
 	 * This method also returns data objects flagged deleted (if returned by the storage)
-	 * or object that were created or modified after the last recorded modification.
+	 * and is regardless of their modification time stamps.
+	 * Registered {@link GetListener}s may change the requested id ({@link GetListener#onBeforeGet(Serializable)})
+	 * and are notified after the data object was loaded ({@link GetListener#onAfterGet(GenericDataObject)}).
 	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
 	 * 
 	 * @param id the identifier of the data object
@@ -77,33 +81,37 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	/**
 	 * Gets all data objects from the data source by its ids. If an empty id-array was provided, all available data objects are returned.
 	 * This method also returns data objects flagged deleted (if returned by the storage)
-	 * or object that were created or modified after the last recorded modification.
+	 * and is regardless of their modification time stamps.
+	 * Registered {@link GetListener}s may change the requested ids ({@link GetListener#onBeforeGet(Serializable[])}).
+	 * If one of them returns null, the result of {@link GenericDataAccessObject#getAll()} is returned instead.
 	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
-	 * 
+	 *
 	 * @param ids the identifiers of the data objects as array
-	 * @return a stream data objects with the given ids. If an id was not found, its data object is not included in the stream.
+	 * @return a stream of data objects with the given ids. If an id was not found, its data object is not included in the stream.
 	 * @throws IllegalArgumentException thrown if parameter ids is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public Stream<DO> get(ID[] ids) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Gets all data objects from the data source by its ids.
+	 * Gets all data objects from the data source by its ids. If an empty collection was provided, all available data objects are returned.
 	 * This method also returns data objects flagged deleted (if returned by the storage)
-	 * or object that were created or modified after the last recorded modification.
+	 * and is regardless of their modification time stamps.
+	 * Otherwise it behaves like {@link GenericDataAccessObject#get(Serializable[])}.
 	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
-	 * 
+	 *
 	 * @param ids the identifiers of the data objects as collection
-	 * @return a stream data objects with the given ids. If an id was not found, its data object is not included in the stream.
+	 * @return a stream of data objects with the given ids. If an id was not found, its data object is not included in the stream.
 	 * @throws IllegalArgumentException thrown if parameter ids is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public Stream<DO> get(Collection<ID> ids) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Loads all data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * Loads all data objects according to the internal sourcing method (defined in the implementation of the data object loader,
+	 * e.g. {@link GenericDefaultDataObjectLoader}).
 	 * This includes data objects flagged as deleted (if returned by the storage) and is regardless of their time stamps.
-	 * Whether time staps are updated in the DAO, or whether its listeners are notified also depends on the implementation of the interface
+	 * Whether time stamps are updated in the DAO, or whether its listeners are notified also depends on the implementation of the interface
 	 * 
 	 * @return a stream of data objects
 	 * @throws DALException re-throws every exception as DAL exception
@@ -111,7 +119,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getAll() throws DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericRecentDataObjectLoader}).
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of the data object loader,
+	 * e.g. {@link GenericRecentDataObjectLoader}).
 	 * Only data objects which have {@link GenericDataObject#getIsDeleted()} == false, and
 	 * {@link GenericDataObject#getModifiedTimeStamp()} greater than {@link GenericDataAccessObject#getLastModifiedTimeStamp()}
 	 * will be in the stream.
@@ -124,7 +133,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getRecent() throws DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericRecentDataObjectLoader}).
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of the data object loader,
+	 * e.g. {@link GenericRecentDataObjectLoader}).
 	 * Only data objects which have {@link GenericDataObject#getModifiedTimeStamp()}
 	 * greater than {@link GenericDataAccessObject#getLastModifiedTimeStamp()} will be in the stream.
 	 * After the stream was consumed to its end, {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is updated
@@ -137,7 +147,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getRecent(boolean returnDeleted) throws DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericRecentDataObjectLoader}).
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of the data object loader,
+	 * e.g. {@link GenericRecentDataObjectLoader}).
 	 * Only data objects which have {@link GenericDataObject#getModifiedTimeStamp()} greater than lastModTS will be in the stream.
 	 * {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is only updated (after the stream was consumed to its end)
 	 * if lastModTS equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()}.
@@ -151,11 +162,10 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Persists any changes to a data object (DO) to the underlying data source and updates
-	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}.
-	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
-	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
-	 * return false for the given data object.
-	 * 
+	 * the DO's time stamps (see {@link GenericDataObject#updateTimeStamps()}).
+	 * If a {@link SaveListener} is registered, it may cancel the saving of the data object when its
+	 * {@link SaveListener#onBeforeSaving(GenericDataObject)} returns false.
+	 *
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
 	 * @throws DALException re-throws every exception as DAL exception
@@ -164,10 +174,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	
 	/**
 	 * Persists any changes to a data object (DO) to the underlying data source and updates
-	 * the DO's modification time stamp {@link GenericDataObject#getModifiedTimeStamp()}
-	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
-	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
-	 * return false for the given data object.
+	 * the DO's time stamps (see {@link GenericDataObject#updateTimeStamps()}).
+	 * If a {@link SaveListener} is registered, it may cancel the saving of the data object when its
+	 * {@link SaveListener#onBeforeSaving(GenericDataObject)} returns false.
 	 * 
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null or an instance of an incompatible class
@@ -177,11 +186,10 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Persists any changes to the data objects (DOs) to the underlying data source and updates
-	 * the DOs' modification time stamps {@link GenericDataObject#getModifiedTimeStamp()}
-	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
-	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
-	 * return false for a given data object.
-	 * 
+	 * the DOs' time stamps (see {@link GenericDataObject#updateTimeStamps()}).
+	 * If a {@link SaveListener} is registered, it may cancel the saving of all the data objects when its
+	 * {@link SaveListener#onBeforeSaving(Collection)} returns false.
+	 *
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
 	 * @throws DALException re-throws every exception as DAL exception
@@ -190,10 +198,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Persists any changes to the data objects (DOs) to the underlying data source and updates
-	 * the DOs' modification time stamps {@link GenericDataObject#getModifiedTimeStamp()}
-	 * If there is a {@link SaveListener} is present, it may cancel the saving of the data object when one of its
-	 * {@link SaveListener#onBeforeSaving(Collection)} or {@link SaveListener#onBeforeSaving(GenericDataObject)}
-	 * return false for a given data object.
+	 * the DOs' time stamps (see {@link GenericDataObject#updateTimeStamps()}).
+	 * If a {@link SaveListener} is registered, it may cancel the saving of all the data objects when its
+	 * {@link SaveListener#onBeforeSaving(Collection)} returns false.
 	 * 
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or one element is an instance of an incompatible class
@@ -232,7 +239,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * Nothing is deleted or flagged if a registered {@link DeleteListener} rejects the deletion.
 	 * 
 	 * @param dataObjects the data objects to delete as array
-	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
+	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or one element is null or an instance of an incompatible class
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public void delete(DO[] dataObjects) throws IllegalArgumentException, DALException;
@@ -254,7 +261,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * After the call, the DO's deleted flag MAY BE true ({@link GenericDataObject#getIsDeleted()} == true) 
 	 * if an update of the DO's deleted flag was implemented in the DAO's implementation.
 	 * Otherwise it will be false.
-	 * 
+	 * Registered {@link DeleteListener}s may change the ids to delete ({@link DeleteListener#onBeforeDeleting(Serializable[])}),
+	 * which is called with an array containing only the given id.
+	 *
 	 * @param dataObjectId the id of the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObjectId is null
 	 * @throws DALException re-throws every exception as DAL exception
@@ -266,7 +275,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * After the call, the DOs' deleted flag MAY BE true ({@link GenericDataObject#getIsDeleted()} == true) 
 	 * if an update of the DOs' deleted flag was implemented in the DAO's implementation.
 	 * Otherwise it will be false.
-	 * 
+	 * Registered {@link DeleteListener}s may change the ids to delete ({@link DeleteListener#onBeforeDeleting(Serializable[])}).
+	 *
 	 * @param dataObjectIds the ids of data objects to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObjectIds is null
 	 * @throws DALException re-throws every exception as DAL exception
@@ -274,14 +284,17 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public void delete(ID[] dataObjectIds) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Resets the data access object and clears the underlying storage if supported
-	 * 
+	 * Clears the underlying storage if supported and resets the DAO's most recent modification time stamp
+	 * ({@link GenericDataAccessObject#getLastModifiedTimeStamp()}).
+	 * Registered listeners are kept.
+	 *
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public void clear() throws DALException;
 
 	/**
 	 * Registers a new listener which will be called before getting DOs and after DOs were loaded.
+	 * The order in which multiple registered listeners are called is undefined.
 	 * 
 	 * @param listener the instance of the listener to register
 	 * @throws IllegalArgumentException thrown if parameter listener is null
@@ -305,6 +318,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Registers a new listener which will be called before saving DOs and after DOs were saved.
+	 * The order in which multiple registered listeners are called is undefined.
 	 * 
 	 * @param listener the instance of the listener to register
 	 * @throws IllegalArgumentException thrown if parameter listener is null
@@ -328,6 +342,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Registers a new listener which will be called before deleting DOs and after DOs were deleted.
+	 * The order in which multiple registered listeners are called is undefined.
 	 * 
 	 * @param listener the instance of the listener to register
 	 * @throws IllegalArgumentException thrown if parameter listener is null

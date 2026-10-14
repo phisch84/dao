@@ -14,12 +14,20 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
  * Basic implementation of the {@link DataObjectLoader} (DOL) interface that defines certain business rules that DOLs need to adhere to.
  * 
  * @param <SR> the data type of a potential source record (SR) that can be turned into a data object
- * @param <ID> te data type of the data objects' identifier (see {@link GenericDataObject#getId()} and {@link GenericDataObject#setId(Serializable)})
+ * @param <ID> the data type of the data objects' identifier (see {@link GenericDataObject#getId()} and {@link GenericDataObject#setId(Serializable)})
  * @param <DO> the actual data type of the data objects (DOs) that are loaded
  */
 abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO extends GenericDataObject<ID>> implements DataObjectLoader<SR, ID, DO>
 {
+    /**
+     * The DAO for which the loader was created. Its {@link GetListener}s are notified by {@link #raiseAfterGet(GenericDataObject)}.
+     */
     protected GenericDataAccessObject<ID, DO> dataAccessObject;
+
+    /**
+     * The function to convert source records from the data source to data objects. It may return null
+     * if no data object can be created for a source record.
+     */
     protected Function<SR, DO> sourceRecordToDataObjConversionFn;
 
     /**
@@ -58,7 +66,7 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
     /**
      * Implements {@link Runnable#run()}.
      * Callback method for {@link java.util.stream.Stream#onClose(Runnable)} which will be called by the encapsulating {@link Stream} class
-     * when it is closed.
+     * when it is closed. It calls {@link #close()}. Exceptions thrown by {@link #close()} are printed to {@link System#err} and not re-thrown.
      */
     @Override
     public void run() 
@@ -78,7 +86,9 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
      * Called by the encapsulating {@link Stream} class when the next record is requested.
      * Needs to be implemented by the deriving class.
      * 
-     * When implementing the concrete DataObjectLoader, consider when to make calls to {@link GetListener#onBeforeGet(Serializable)} and {@link GetListener#onAfterGet(GenericDataObject)}
+     * When implementing the concrete DataObjectLoader, call {@link #raiseAfterGet(GenericDataObject)} for every data object
+     * before it is passed to the consumer, so that {@link GetListener#onAfterGet(GenericDataObject)} is called for it.
+     * {@link GetListener#onBeforeGet(Serializable)} is not meant to be called by loaders.
      * 
      * @param action the consumer of the stream that will take the next data object when {@link Consumer#accept(Object)} is called by this method.
      * @return true if a data object was provided, false if there are no more data objects
@@ -114,8 +124,8 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
     /**
      * Implements {@link Spliterator#characteristics()}.
      * May be implemented by the deriving class.
-     * In this implementation it simply reports an immutable collection
-     * 
+     * In this implementation it only reports {@link Spliterator#IMMUTABLE}.
+     *
      * @return a value indicating the characteristics of the collection
      */
     @Override
@@ -126,7 +136,8 @@ abstract public class DataObjectLoaderBase<SR, ID extends Serializable, DO exten
 
     /**
      * Implements {@link AutoCloseable#close()}.
-     * Called by the {@link Stream#onClose(Runnable)} method of the encapsulating class when it is closed.
+     * Called by {@link #run()}, which is registered as close handler ({@link Stream#onClose(Runnable)}) of the encapsulating
+     * {@link Stream}, when the stream is closed. Needs to be implemented by the deriving class to release the resources of the loader.
      */
     abstract public void close();
 }

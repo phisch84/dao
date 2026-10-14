@@ -9,14 +9,20 @@ import java.util.function.Function;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
- * A generic stub for an implementation of the {@link DataObjectLoader} interface.
- * 
+ * Default boiler plate implementation of the {@link DefaultDataObjectLoader} interface.
+ * It converts the source records provided by {@link #getNextSourceRecord()} to data objects and, if a set of ids
+ * to filter for was provided, only reports data objects whose id ({@link GenericDataObject#getId()}) is in that set.
+ * The modification time stamp and the deleted flag of the data objects are ignored.
+ *
  * @param <SR> the data type of a potential source record that needs to be converted into the actual data object
  * @param <ID> the data type of the data object's identifier
  * @param <DO> the data type of the actual data object returned by the loader.
  */
 abstract public class GenericDefaultDataObjectLoader<SR, ID extends Serializable, DO extends GenericDataObject<ID>> extends DataObjectLoaderBase<SR, ID, DO> implements DefaultDataObjectLoader<SR, ID, DO>
 {
+    /**
+     * The ids of the data objects to report. If empty, no filtering is done.
+     */
     protected Set<ID> idsToFilterIn;
 
     /**
@@ -33,12 +39,12 @@ abstract public class GenericDefaultDataObjectLoader<SR, ID extends Serializable
     }
 
     /**
-     * Creates a new instance that will specific data object ids ({@link GenericDataObject#getId()})
-     * if at least one id to filter for was provided
-     * 
+     * Creates a new instance that will filter for specific data object ids ({@link GenericDataObject#getId()})
+     * if at least one id to filter for was provided. The given set is copied.
+     *
      * @param dataAccessObject the DAO for which the loader was created
      * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
-     * @param idsToFilterIn a set of data object ids ({@link GenericDataObject#getId()}) to filter the source record for. May be null (then no filtering is done).
+     * @param idsToFilterIn a set of data object ids ({@link GenericDataObject#getId()}) to filter the source records for. May be null or empty (then no filtering is done).
      * @throws IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
      */
     public GenericDefaultDataObjectLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn, Set<ID> idsToFilterIn) throws IllegalArgumentException

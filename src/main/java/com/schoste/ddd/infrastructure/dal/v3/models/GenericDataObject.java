@@ -107,8 +107,10 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 	
 	/**
-	 * Updates the time stamps of the instance before it is persisted.
-	 * To be called by the DAO before the instance is persisted.
+	 * Updates the time stamps of the instance to the current time.
+	 * The modification time stamp is always updated. The creation time stamp is only set if it is smaller than 1
+	 * (i.e. it was not set yet).
+	 * To be called by the DAO when the instance is created and before it is persisted.
 	 */
 	public void updateTimeStamps()
 	{
@@ -138,8 +140,10 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 
 	/**
 	 * Determines if the object is equal to another object by looking
-	 * on the id, and the time stamps
-	 * 
+	 * on the runtime class, the id, and the time stamps.
+	 * The deleted-flag ({@link GenericDataObject#getIsDeleted()}) is not considered.
+	 * Two objects of the same class with equal time stamps and both without id are considered equal.
+	 *
 	 * @param obj the object to compare to
 	 * @return true if both objects are equal, false otherwise
 	 */

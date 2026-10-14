@@ -11,7 +11,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * 
  * @param <ID> the data type of the data object's unique identifier
  * @param <DO> the data type of the data object
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public interface DeleteListener<ID extends Serializable, DO extends GenericDataObject<ID>>

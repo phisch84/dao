@@ -9,17 +9,18 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericDefaultDataObjectLo
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoader;
 
 /**
- * Interface to a listener which is notified before or after a data objects (DOs) are requested from the data access object (DAO)
+ * Interface to a listener which is notified before or after data objects (DOs) are requested from the data access object (DAO).
  * All the methods are invoked in the same thread which will perform the actual get operation.
- * 
+ *
  * When streams of data objects are requested, the actual loading of data objects happens in the data object loader
  * (see {@link GenericDefaultDataObjectLoader#tryAdvance(java.util.function.Consumer)} and
  * {@link GenericRecentDataObjectLoader#tryAdvance(java.util.function.Consumer)}).
- * When implementing data object loaders for a DAO, calls to {@link GetListener#onAfterGet(GenericDataObject)} must be made there.
+ * When implementing data object loaders for a DAO, calls to {@link GetListener#onAfterGet(GenericDataObject)} are supposed to be made there.
+ * Whether that happens depends on the actual implementation of the loaders.
  * 
  * @param <ID> the data type of the data object's unique identifier
  * @param <DO> the data type of the data object
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public interface GetListener<ID extends Serializable, DO extends GenericDataObject<ID>>

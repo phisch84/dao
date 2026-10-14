@@ -8,16 +8,29 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
  * Default boiler plate implementation of the {@link RecentDataObjectLoader} interface.
- * The check if a data object shall be discarded or reported is handled by the ({@link filterInDataObjAndUpdateDAO}) method.
- * 
+ * The check if a data object shall be discarded or reported is handled by the {@link #filterInDataObjAndUpdateMaxTS(GenericDataObject)} method.
+ * When the loading ends, {@link #tryAdvance(Consumer)} updates the most recent modification time stamp of the data access object
+ * (see {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)}).
+ *
  * @param <SR> the data type of a potential source record that needs to be converted into the actual data object
  * @param <ID> the data type of the data object's identifier
  * @param <DO> the data type of the actual data object returned by the loader.
  */
 abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable, DO extends GenericDataObject<ID>> extends DataObjectLoaderBase<SR, ID, DO> implements RecentDataObjectLoader<SR, ID, DO>
 {
+    /**
+     * The modification time stamp given to the loader. Data objects with a smaller or equal modification time stamp are discarded.
+     */
     protected long lastModTS;
+
+    /**
+     * The biggest modification time stamp of the reported data objects (initially {@link #lastModTS}).
+     */
     protected long maxTS;
+
+    /**
+     * If true, data objects flagged as deleted (see {@link GenericDataObject#getIsDeleted()}) are reported too.
+     */
     protected boolean returnDeleted;
 
     /**
@@ -62,7 +75,9 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
     /**
      * Gets the next source record from the data storage so it can be turned into a data object.
-     * 
+     * If there are no more records or on error this method must return null, which ends the loading
+     * (see {@link #tryAdvance(Consumer)}).
+     *
      * @return the next source record from the data storage or null if there are no more records or on error
      */
     abstract protected SR getNextSourceRecord();

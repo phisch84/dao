@@ -29,12 +29,33 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.SaveListener;
  * @param <ID> the class of the data objects' identifier
  * @param <DO> the class of the data object to persist
  */
-public abstract class GenericDAO <ID extends Serializable, DO extends GenericDataObject<ID>> implements GenericDataAccessObject<ID, DO> 
+public abstract class GenericDAO <ID extends Serializable, DO extends GenericDataObject<ID>> implements GenericDataAccessObject<ID, DO>
 {
+	/**
+	 * The most recent modification time stamp of data objects (see {@link GenericDataAccessObject#getLastModifiedTimeStamp()}).
+	 * Initially and after {@link GenericDAO#clear()} it is {@link Long#MIN_VALUE}.
+	 */
 	protected long latestModificationTimeStamp = Long.MIN_VALUE;
+
+	/**
+	 * The conversion function passed to the data object loaders. It expects the source record to be the id of a data object
+	 * and loads the data object via {@link GenericDAO#safeDoGet(Object)}, so it returns null if no data object was found or on error.
+	 */
 	protected Function<?, DO> defaultSRtoDOConversionFn = srId -> this.safeDoGet(srId);
+
+	/**
+	 * The registered {@link GetListener}s. The order in which they are called is undefined.
+	 */
 	protected HashSet<GetListener<ID, DO>> onGetListeners = new HashSet<>();
+
+	/**
+	 * The registered {@link SaveListener}s. The order in which they are called is undefined.
+	 */
 	protected HashSet<SaveListener<ID, DO>> onSaveListeners = new HashSet<>();
+
+	/**
+	 * The registered {@link DeleteListener}s. The order in which they are called is undefined.
+	 */
 	protected HashSet<DeleteListener<ID, DO>> onDeleteListeners = new HashSet<>();
 
 	/**
@@ -76,7 +97,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	protected abstract void doSave(Collection<DO> dataObjects) throws Exception;
 
 	/**
-	 * The method to actually deletes the data object and needs to be implemented by its deriving class.
+	 * The method to actually delete the data object and needs to be implemented by its deriving class.
 	 * The implementation is expected to flag the data object as deleted ({@link GenericDataObject#setIsDeleted(boolean)}),
 	 * as this class does not do it.
 	 * Consider implementing the method synchronized for thread safety.
@@ -87,7 +108,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	protected abstract void doDelete(DO dataObject) throws Exception;
 
 	/**
-	 * The method to actually deletes the data objects and needs to be implemented by its deriving class.
+	 * The method to actually delete the data objects and needs to be implemented by its deriving class.
 	 * The implementation is expected to flag the data objects as deleted ({@link GenericDataObject#setIsDeleted(boolean)}),
 	 * as this class does not do it.
 	 * Consider implementing the method synchronized for thread safety.
@@ -98,7 +119,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	protected abstract void doDelete(Collection<DO> dataObjects) throws Exception;
 
 	/**
-	 * The method to actually deletes the data objects with given ids and needs to be implemented by its deriving class.
+	 * The method to actually delete the data objects with given ids and needs to be implemented by its deriving class.
 	 * Consider implementing the method synchronized for thread safety.
 	 * 
 	 * @param dataObjectIds the ids of the data objects to delete
@@ -117,7 +138,8 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 
 	/**
 	 * Returns a datum that can be used to uniquely identify data objects that haven't been persisted yet.
-	 * 
+	 * It is called by {@link GenericDAO#createDataObject(Object...)} to set the id of the newly created data object.
+	 *
 	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
 	 * @return a datum that can be used to uniquely identify a data object that hasn't been persisted yet
 	 * @throws Exception re-throws every exception
@@ -125,52 +147,61 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	protected abstract ID getNextVirtualId(Object... args) throws Exception;
 
 	/**
-	 * Returns a datum that uniquely identifis a data objects that exists in the underlying storage.
+	 * Returns a datum that uniquely identifies a data object that exists in the underlying storage.
 	 * This method is not called by this class. It is meant to be used by the deriving class (e.g. when saving a data object).
-	 * 
+	 *
 	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
-	 * @return a datum that uniquely identifis a data objects that exists in the underlying storage
+	 * @return a datum that uniquely identifies a data object that exists in the underlying storage
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract ID getActualId(Object... args) throws Exception;
 
 	/**
-	 * Returns an iterable object that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll()}
-	 * 
+	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
+	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll()}.
+	 * The loader is expected to be a {@link DefaultDataObjectLoader} (e.g. {@link GenericDefaultDataObjectLoader}).
+	 *
 	 * To be overwritten by the extending class.
-	 * 
+	 *
 	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
 	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
 	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
-	 * @return an iterable object that will poll the next available data object from the data source
+	 * @return a data object loader that will poll the next available data object from the data source
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, Object... args) throws Exception;
 
 	/**
-	 * Returns an iterable object that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link GenericDataAccessObject#get(Serializable[])} and {@link GenericDataAccessObject#get(Collection)}
-	 * 
+	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
+	 * so it can be processed in calls to {@link GenericDataAccessObject#get(Serializable[])} and {@link GenericDataAccessObject#get(Collection)}.
+	 * The loader is expected to be a {@link DefaultDataObjectLoader} (e.g. {@link GenericDefaultDataObjectLoader}).
+	 * If the set of ids is empty, the loader must not filter for ids and return all available data objects
+	 * (as promised by {@link GenericDataAccessObject#get(Serializable[])}).
+	 *
 	 * To be overwritten by the extending class.
-	 * 
+	 *
 	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
 	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
-	 * @param ids a set of ids that identify the data objects to load from the underlying storage
+	 * @param ids a set of ids that identify the data objects to load from the underlying storage. If empty, all data objects shall be loaded
 	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
-	 * @return an iterable object that will poll the next available data object from the data source
+	 * @return a data object loader that will poll the next available data object from the data source
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, Set<ID> ids, Object... args) throws Exception;
 
 	/**
-	 * Returns an iterable object that will poll the next available data object from the data source
+	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
 	 * so it can be processed in calls to {@link GenericDataAccessObject#getRecent()}, {@link GenericDataAccessObject#getRecent(boolean)}
 	 * and {@link GenericDataAccessObject#getRecent(long, boolean)}.
+	 * The loader is expected to be a {@link RecentDataObjectLoader} (e.g. {@link GenericRecentDataObjectLoader}).
 	 * The created data loader needs to be capable of filtering data objects out based on if they were flagged deleted
 	 * ({@link GenericDataObject#getIsDeleted()} == true) and if they were not modified after the given modification time stamp
-	 * ({@link GenericDataObject#getModifiedTimeStamp()} <= lastModTS)
-	 * 
+	 * ({@link GenericDataObject#getModifiedTimeStamp()} &lt;= lastModTS).
+	 *
+	 * This class does not update the DAO's most recent modification time stamp itself. The loader is responsible for calling
+	 * {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)} when the loading has ended and lastModTS equals
+	 * {@link GenericDataAccessObject#getLastModifiedTimeStamp()} (as {@link GenericRecentDataObjectLoader} does).
+	 *
 	 * To be overwritten by the extending class.
 	 * 
 	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
@@ -178,7 +209,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	 * @param lastModTS the modification time stamp the data objects' modification time stamps are compared to
 	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) shall also be returned
 	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
-	 * @return an iterable object that will poll the next available data object from the data source
+	 * @return a data object loader that will poll the next available data object from the data source
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract DataObjectLoader<?,ID,DO> createRecentDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, long lastModTS, boolean returnDeleted, Object... args) throws Exception;
@@ -203,8 +234,10 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 
 	/**
 	 * Updates the created and modified time stamp of data objects (DOs) by calling the implementation of
-	 * {@link GenericDataObject#updateTimeStamps()}.
-	 * 
+	 * {@link GenericDataObject#updateTimeStamps()} (see {@link GenericDAO#updateDataObjTimeStamps(GenericDataObject)}).
+	 *
+	 * Does nothing if the collection is null. Elements that are null are skipped.
+	 *
 	 * @param dataObjects the data objects to update
 	 */
 	protected synchronized void updateDataObjTimeStamps(Collection<DO> dataObjects)

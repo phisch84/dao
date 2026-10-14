@@ -5,7 +5,7 @@ import com.schoste.ddd.infrastructure.dal.v3.services.DALExceptionHandler;
 /**
  * Basic exception for all exceptions thrown by classes/service from the DAL
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class DALException extends Exception
