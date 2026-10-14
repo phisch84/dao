@@ -18,10 +18,12 @@ public interface SaveListener<ID extends Serializable, DO extends GenericDataObj
 {
 	/**
 	 * Called by the DAO before saving the dataObjectToSave.
-	 * The listener may change the object. After the methods returns true,
+	 * The listener may change the object. After the method returns true,
 	 * the DAO will save the dataObjectToSave. If the method returns false, it will
 	 * not attempt save anything.
-	 * 
+	 * If several listeners are registered, the DAO only saves if all of them return true. As soon as one of them returns false,
+	 * the remaining listeners are not called.
+	 *
 	 * @param dataObjectToSave the data object to save
 	 * @return true if the DAO should save the object or false if it should discard it
 	 */
@@ -29,10 +31,12 @@ public interface SaveListener<ID extends Serializable, DO extends GenericDataObj
 
 	/**
 	 * Called by the DAO before saving any of the DOs in dataObjectsToSave.
-	 * The listener may change the objects as well as the collection. After the methods returns,
+	 * The listener may change the objects as well as the collection. After the method returns,
 	 * the DAO will save what it finds in dataObjectsToSave. If the method returns false, it will
 	 * not attempt save anything.
-	 * 
+	 * If several listeners are registered, the DAO only saves if all of them return true. As soon as one of them returns false,
+	 * the remaining listeners are not called.
+	 *
 	 * @param dataObjectsToSave a collection of data objects to save
 	 * @return true if the DAO should save the objects or false if it should discard them
 	 */

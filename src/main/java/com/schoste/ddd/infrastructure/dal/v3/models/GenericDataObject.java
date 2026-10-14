@@ -33,7 +33,8 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 
 	/**
 	 * Sets the unique identifier of the object in the database.
-	 * When the object is persisted, such the id may be overwritten.
+	 * When the object is persisted, the id may be overwritten
+	 * (e.g. a virtual id may be turned into an actual id)
 	 * 
 	 * @param id the unique identifier of the object in the database
 	 */

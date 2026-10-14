@@ -18,10 +18,12 @@ public interface DeleteListener<ID extends Serializable, DO extends GenericDataO
 {
 	/**
 	 * Called by the DAO before deleting the dataObjectToDelete.
-	 * The listener may change the object. After the methods returns true,
+	 * The listener may change the object. After the methods return true,
 	 * the DAO will delete the dataObjectToDelete. If the method returns false, it will
 	 * not attempt delete anything.
-	 * 
+	 * If several listeners are registered, the DAO only deletes if all of them return true. As soon as one of them returns false,
+	 * the remaining listeners are not called.
+	 *
 	 * @param dataObjectToDelete the data object to delete
 	 * @return true if the DAO should delete the object or false if it should discard it
 	 */
@@ -29,10 +31,12 @@ public interface DeleteListener<ID extends Serializable, DO extends GenericDataO
 
 	/**
 	 * Called by the DAO before deleting any of the DOs in dataObjectsToDelete.
-	 * The listener may change the objects as well as the collection. After the methods returns,
+	 * The listener may change the objects as well as the collection. After the method returns,
 	 * the DAO will delete what it finds in dataObjectsToDelete. If the method returns false, it will
 	 * not attempt delete anything.
-	 * 
+	 * If several listeners are registered, the DAO only deletes if all of them return true. As soon as one of them returns false,
+	 * the remaining listeners are not called.
+	 *
 	 * @param dataObjectsToDelete a collection of data objects to delete
 	 * @return true if the DAO should delete the objects or false if it should discard them
 	 */
@@ -40,7 +44,7 @@ public interface DeleteListener<ID extends Serializable, DO extends GenericDataO
 
 	/**
 	 * Called by the DAO before deleting any of the DOs with an id in dataObjectIdsToDelete.
-	 * The listener should return the ids which should be actually deleted. After the methods returns,
+	 * The listener should return the ids which should be actually deleted. After the method returns,
 	 * the DAO will delete what was returned. The listener must not return null.
 	 * This method is called when data objects are deleted by their ids, also if only one id was given
 	 * (then with an array of one id).

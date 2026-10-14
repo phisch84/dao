@@ -91,9 +91,10 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
      * (the conversion function returns null).
      * 
      * When the loading ends, the last modification time stamp of the data access object is set to the biggest
-     * modification time stamp of the reported data objects. This only happens if the stream is consumed to its end and if
+     * modification time stamp of the reported data objects. This happens either if the stream is consumed to its end or
+     * if it ends early because a source record can't be converted, but only if
      * the time stamp given to the loader still equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()},
-     * i.e. it was not overridden by the caller.
+     * i.e. it was not overridden by the caller. It does not happen on error (exception).
      * 
      * @param action the consumer of the stream that will take the next data object
      * @return true if a data object was provided, false if there are no more data objects or on error
