@@ -16,9 +16,9 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 public interface DeleteListener<ID extends Serializable, T extends GenericDataObject<ID>>
 {
 	/**
-	 * Called by the DAO before deleting the dataObjectToSave.
+	 * Called by the DAO before deleting the dataObjectToDelete.
 	 * The listener may change the object. After the methods returns true,
-	 * the DAO will delete the dataObjectToSave. If the method returns false, it will
+	 * the DAO will delete the dataObjectToDelete. If the method returns false, it will
 	 * not attempt delete anything.
 	 * 
 	 * @param dataObjectToDelete the data object to delete
@@ -27,9 +27,9 @@ public interface DeleteListener<ID extends Serializable, T extends GenericDataOb
 	boolean onBeforeDeleting(T dataObjectToDelete);
 
 	/**
-	 * Called by the DAO before deleting any of the DOs in dataObjectsToSave.
+	 * Called by the DAO before deleting any of the DOs in dataObjectsToDelete.
 	 * The listener may change the objects as well as the collection. After the methods returns,
-	 * the DAO will delete what it finds in dataObjectsToSave. If the method returns false, it will
+	 * the DAO will delete what it finds in dataObjectsToDelete. If the method returns false, it will
 	 * not attempt delete anything.
 	 * 
 	 * @param dataObjectsToDelete a collection of data objects to delete
@@ -40,7 +40,9 @@ public interface DeleteListener<ID extends Serializable, T extends GenericDataOb
 	/**
 	 * Called by the DAO before deleting any of the DOs with an id in dataObjectIdsToDelete.
 	 * The listener should return the ids which should be actually deleted. After the methods returns,
-	 * the DAO will delete what was returned.
+	 * the DAO will delete what was returned. The listener must not return null.
+	 * This method is called when data objects are deleted by their ids, also if only one id was given
+	 * (then with an array of one id).
 	 * 
 	 * @param dataObjectIdsToDelete an array of ids of data objects to delete
 	 * @return an array of ids of data objects to actually delete

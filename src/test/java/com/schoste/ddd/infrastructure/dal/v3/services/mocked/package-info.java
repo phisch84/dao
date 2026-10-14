@@ -1,5 +1,5 @@
 /**
- * Package for the mock version 2 implementation of the DAL
+ * Package for the mock version 3 implementation of the DAL
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  */

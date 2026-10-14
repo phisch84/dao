@@ -12,9 +12,10 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoa
  * Interface to a listener which is notified before or after a data objects (DOs) are requested from the data access object (DAO)
  * All the methods are invoked in the same thread which will perform the actual get operation.
  * 
- * The actual loading of data objects happens in {@link GenericDefaultDataObjectLoader#tryAdvance(java.util.function.Consumer)}.
- * When implementing the for a DAO the {@link GenericDefaultDataObjectLoader} and {@link GenericRecentDataObjectLoader}
- * calls to {@link GetListener#onAfterGet(GenericDataObject)} must be made there.
+ * When streams of data objects are requested, the actual loading of data objects happens in the data object loader
+ * (see {@link GenericDefaultDataObjectLoader#tryAdvance(java.util.function.Consumer)} and
+ * {@link GenericRecentDataObjectLoader#tryAdvance(java.util.function.Consumer)}).
+ * When implementing data object loaders for a DAO, calls to {@link GetListener#onAfterGet(GenericDataObject)} must be made there.
  * 
  * @param <ID> the data type of the data object's unique identifier
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
@@ -37,15 +38,19 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * (see {@link GenericDataAccessObject#get(Serializable[])} and {@link GenericDataAccessObject#get(java.util.Collection)}).
 	 * The listener may change the ids by returning new ones.
 	 *
-	 * @param ids the ids of the data object to get. This parameter is null if {@link GenericDataAccessObject#getAll()} is called
+	 * This method is not called for {@link GenericDataAccessObject#getAll()}.
+	 * If null is returned, the DAO stops calling this method on the remaining listeners and returns the result of {@link GenericDataAccessObject#getAll()}.
+	 * 
+	 * @param ids the ids of the data object to get
 	 * @return the actual ids to get via the DAO, or null if {@link GenericDataAccessObject#getAll()} should be called
 	 */
 	ID[] onBeforeGet(ID[] ids);
 
 	/**
 	 * Always called after creating the data object loader and before requesting data objects.
-	 * (see {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}).
-	 * The listener may change the data object loader provided as parameter.
+	 * (see {@link GenericDataAccessObject#get(Serializable[])}, {@link GenericDataAccessObject#get(java.util.Collection)},
+	 * {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}).
+	 * The listener may change the state of the data object loader provided as parameter, but it can't replace it.
 	 *
 	 * @param dataObjLoader the data object loader that will be used to load the data
 	 */
@@ -56,14 +61,18 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * The listener may change the DO.
 	 * It isn't guaranteed that this method is called for every DO that is loaded from the storage.
 	 * 
-	 * When calling {@link GenericDataAccessObject#get(Serializable)}, {@link GenericDataAccessObject#get(Serializable[])} and
-	 * {@link GenericDataAccessObject#get(java.util.Collection)}) this method is called by the DAO.
+	 * When calling {@link GenericDataAccessObject#get(Serializable)} this method is called by the DAO.
+	 * In this case the parameter is null if no data object was found, and the returned value is ignored:
+	 * the listener can change the DO, but it can't replace it by another instance.
 	 * 
-	 * When calling {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}
+	 * When calling {@link GenericDataAccessObject#get(Serializable[])}, {@link GenericDataAccessObject#get(java.util.Collection)},
+	 * {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}
 	 * the call is supposed to be made by the {@link GenericDefaultDataObjectLoader} and {@link GenericRecentDataObjectLoader}
 	 * implementation. If that happens depends on the actual implementation of the loaders.
+	 * In this case the returned DO is the one that is passed to the next listener and finally returned to the caller.
 	 * 
 	 * @param dataObject the data object that was loaded and will be returned
+	 * @return the data object to return to the caller (usually the one provided as parameter)
 	 */
 	DO onAfterGet(DO dataObject);
 }

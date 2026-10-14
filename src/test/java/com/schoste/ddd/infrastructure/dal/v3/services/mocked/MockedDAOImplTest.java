@@ -34,6 +34,8 @@ public class MockedDAOImplTest extends GenericDAOTest<Long, MockedDO, MockedDAOI
 
 	/**
 	 * Sets up existing data objects
+	 * 
+	 * @throws Exception re-throws every exception
 	 */
 	@Before
 	public void createDataObjects() throws Exception
@@ -54,7 +56,9 @@ public class MockedDAOImplTest extends GenericDAOTest<Long, MockedDO, MockedDAOI
 
 	/**
 	 * Registers default listeners for tests using
-	 * {@link GenericDataAccessObject#registerOnSaveListener(SaveListener)}
+	 * {@link GenericDataAccessObject#registerOnGetListener(GetListener)},
+	 * {@link GenericDataAccessObject#registerOnSaveListener(SaveListener)} and
+	 * {@link GenericDataAccessObject#registerOnDeleteListener(DeleteListener)}
 	 *  
 	 * @throws Exception re-throws every exception
 	 */
@@ -84,7 +88,9 @@ public class MockedDAOImplTest extends GenericDAOTest<Long, MockedDO, MockedDAOI
 
 	/**
 	 * Unregisters all listeners which might have been registered during a test using
-	 * {@link GenericDataAccessObject#unregisterOnSaveListener(SaveListener)}
+	 * {@link GenericDataAccessObject#unregisterOnGetListener(GetListener)},
+	 * {@link GenericDataAccessObject#unregisterOnSaveListener(SaveListener)} and
+	 * {@link GenericDataAccessObject#unregisterOnDeleteListener(DeleteListener)}
 	 * 
 	 * @throws Exception re-throws every exception
 	 */

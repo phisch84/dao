@@ -41,7 +41,11 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
     /**
      * Determines whether a data object shall be reported or not and keeps track of the biggest modification time stamp
-     * found in the loaded data objects for a potential update (see {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)}).
+     * found in the reported data objects for a potential update (see {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)}).
+     * The data access object itself is not updated by this method, but by {@link #tryAdvance(Consumer)}.
+     * 
+     * A data object is discarded if it is null, if it is flagged as deleted and the loader shall not return deleted
+     * data objects, or if its modification time stamp is not greater than the time stamp given to the loader.
      * 
      * @param dataObj the data object to evaluate
      * @return true if the data object shall be reported, false if it shall be discarded
@@ -52,7 +56,7 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
         if (dataObj.getIsDeleted() && !this.returnDeleted) return false;
         if (dataObj.getModifiedTimeStamp() <= this.lastModTS) return false;
 
-        this.maxTS = dataObj.getModifiedTimeStamp();
+        this.maxTS = Math.max(this.maxTS, dataObj.getModifiedTimeStamp());
 
         return true;
     }
@@ -64,6 +68,22 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
      */
     abstract protected SR getNextSourceRecord();
 
+    /**
+     * Implements {@link java.util.Spliterator#tryAdvance(Consumer)}.
+     * Polls source records via {@link #getNextSourceRecord()} until one of them yields a data object to report
+     * (see {@link #filterInDataObjAndUpdateDAO(GenericDataObject)}). Before a data object is reported,
+     * {@link #raiseAfterGet(GenericDataObject)} is called.
+     * The loading ends if there are no more source records or if a source record can't be converted to a data object
+     * (the conversion function returns null).
+     * 
+     * When the loading ends, the last modification time stamp of the data access object is set to the biggest
+     * modification time stamp of the reported data objects. This only happens if the stream is consumed to its end and if
+     * the time stamp given to the loader still equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()},
+     * i.e. it was not overridden by the caller.
+     * 
+     * @param action the consumer of the stream that will take the next data object
+     * @return true if a data object was provided, false if there are no more data objects or on error
+     */
     @Override
     public boolean tryAdvance(Consumer<? super DO> action)
     {

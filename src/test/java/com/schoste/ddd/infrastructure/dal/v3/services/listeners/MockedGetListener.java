@@ -44,6 +44,9 @@ public class MockedGetListener<DO extends GenericDataObject<Long>> implements Ge
 
 	/**
 	 * {@inheritDoc}
+	 * 
+	 * Besides the data object loader, this implementation also records a null in the collection of the ids
+	 * received before getting (see {@link MockedGetListener#getIdsReceivedBeforeGetting()}).
 	 */
 	@Override
 	public void onBeforeGet(DataObjectLoader<?, Long, DO> dataObjLoader)
@@ -66,7 +69,8 @@ public class MockedGetListener<DO extends GenericDataObject<Long>> implements Ge
 	}
 
 	/**
-	 * Gets all data object ids received before they were submitted for getting
+	 * Gets all data object ids received before they were submitted for getting.
+	 * The collection contains one null for every data object loader that was received.
 	 * 
 	 * @return a collection of data object ids
 	 */
@@ -78,7 +82,7 @@ public class MockedGetListener<DO extends GenericDataObject<Long>> implements Ge
 	/**
 	 * Gets all data object loaders received before any data objects have been loaded
 	 * 
-	 * @return a collection of data objects
+	 * @return a collection of data object loaders
 	 */
 	public Collection<DataObjectLoader<?, Long, DO>> getDOLsReceivedBeforeGetting()
 	{

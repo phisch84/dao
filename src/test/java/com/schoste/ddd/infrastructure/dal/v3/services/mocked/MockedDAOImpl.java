@@ -56,10 +56,10 @@ public class MockedDAOImpl extends GenericMockedDAO<MockedDO>
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	protected RecentDataObjectLoader<?, Long, MockedDO> createRecentDOLoader(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, long lastModTS, boolean skipDeleted, Object... args) throws Exception
+	protected RecentDataObjectLoader<?, Long, MockedDO> createRecentDOLoader(GenericDataAccessObject<Long, MockedDO> dataAccessObject, Function<?, MockedDO> sourceRecordToDataObjConversionFn, long lastModTS, boolean returnDeleted, Object... args) throws Exception
 	{
 		Function<?, MockedDO> cf = (sourceRecordToDataObjConversionFn != null) ? sourceRecordToDataObjConversionFn : this.defaultSRtoDOConversionFn;
-		RecentDataObjectLoader<?, Long, MockedDO> dol = this.applicationContext.getBean(RecentDataObjectLoader.class, this, cf, lastModTS, skipDeleted);
+		RecentDataObjectLoader<?, Long, MockedDO> dol = this.applicationContext.getBean(RecentDataObjectLoader.class, this, cf, lastModTS, returnDeleted);
 
 		return dol;
 	}

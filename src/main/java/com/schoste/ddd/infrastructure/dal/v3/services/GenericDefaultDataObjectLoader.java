@@ -51,11 +51,23 @@ abstract public class GenericDefaultDataObjectLoader<SR, ID extends Serializable
     /**
      * Gets the next source record from the data storage so it can be turned into a data object.
      * If there are no more records or on error this method must return null.
+     * This is the only way to signal the end of the data: {@link #tryAdvance(Consumer)} keeps calling this method
+     * until it returns null or a source record yields a data object to report.
      * 
      * @return the next source record from the data storage or null if there are no more records or on error
      */
     abstract protected SR getNextSourceRecord();
 
+    /**
+     * Implements {@link java.util.Spliterator#tryAdvance(Consumer)}.
+     * Polls source records via {@link #getNextSourceRecord()} until one of them yields a data object to report.
+     * Source records which can't be converted to a data object (the conversion function returns null, e.g. because
+     * no data object was found) and data objects whose id is not in the set of ids to filter for are skipped.
+     * Before a data object is reported, {@link #raiseAfterGet(GenericDataObject)} is called.
+     * 
+     * @param action the consumer of the stream that will take the next data object
+     * @return true if a data object was provided, false if there are no more data objects or on error
+     */
     @Override
     public boolean tryAdvance(Consumer<? super DO> action)
     {
@@ -67,9 +79,8 @@ abstract public class GenericDefaultDataObjectLoader<SR, ID extends Serializable
             {
                 DO dataObj = (DO) super.sourceRecordToDataObjConversionFn.apply(sourceRecord);
 
-                if (dataObj == null) return false;
-
-                if ((this.idsToFilterIn.size() < 1) || ((this.idsToFilterIn.size() > 0) && this.idsToFilterIn.contains(dataObj.getId())))
+                // source records without data object (not found or failed to load) are skipped
+                if ((dataObj != null) && ((this.idsToFilterIn.size() < 1) || this.idsToFilterIn.contains(dataObj.getId())))
                 {
 
                     // raise the get-listener after the DO was loaded but before it is accepted in the output stream
@@ -79,6 +90,8 @@ abstract public class GenericDefaultDataObjectLoader<SR, ID extends Serializable
 
                     return true;
                 }
+
+                sourceRecord = this.getNextSourceRecord();
             }
 
             return false;

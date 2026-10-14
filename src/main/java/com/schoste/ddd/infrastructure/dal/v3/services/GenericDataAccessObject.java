@@ -32,7 +32,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	/**
 	 * Override the milli-second unix time stamp of the most recent modification time/date of data objects
 	 * which will be used by the DAO in {@link GenericDataAccessObject#getRecent(long, boolean)}.
-	 * The time stamp is usually tracked by the DAO and updated when {@link GenericDataAccessObject#getRecent(long, boolean)} is called.
+	 * The time stamp is usually tracked by the DAO and updated when the stream returned by {@link GenericDataAccessObject#getRecent()}
+	 * or {@link GenericDataAccessObject#getRecent(boolean)} was consumed to its end.
 	 * 
 	 * @param newTS the value to overwrite the internal most recent modification time/date of data objects
 	 */
@@ -44,6 +45,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * As a standard, the newly created data object is supposed to have a virtual identifier, so that
 	 * {@link GenericDataAccessObject#isVirtualId(Serializable)} for {@link GenericDataObject#getId()}
 	 * of a newly created data object is true.
+	 * The time stamps of the newly created data object are set as well (see {@link GenericDataObject#updateTimeStamps()}).
 	 * 
 	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
 	 * @return an instance to a new data object
@@ -79,7 +81,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
 	 * 
 	 * @param ids the identifiers of the data objects as array
-	 * @return a stream data objects with the given ids. If the id was not found, the data objects is not included in the list.
+	 * @return a stream data objects with the given ids. If an id was not found, its data object is not included in the stream.
 	 * @throws IllegalArgumentException thrown if parameter ids is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
@@ -92,14 +94,15 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * This method is usually called by repositories and services in case they need to refresh the data object of an entity.
 	 * 
 	 * @param ids the identifiers of the data objects as collection
-	 * @return a stream data objects with the given ids. If the id was not found, the data objects is not included in the list.
+	 * @return a stream data objects with the given ids. If an id was not found, its data object is not included in the stream.
 	 * @throws IllegalArgumentException thrown if parameter ids is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public Stream<DO> get(Collection<ID> ids) throws IllegalArgumentException, DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * Loads all data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * This includes data objects flagged as deleted (if returned by the storage) and is regardless of their time stamps.
 	 * Whether time staps are updated in the DAO, or whether its listeners are notified also depends on the implementation of the interface
 	 * 
 	 * @return a stream of data objects
@@ -108,10 +111,12 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getAll() throws DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericRecentDataObjectLoader}).
 	 * Only data objects which have {@link GenericDataObject#getIsDeleted()} == false, and
-	 * {@link GenericDataObject#getCreatedTimeStamp()} or {@link GenericDataObject#getModifiedTimeStamp()} smaller than {@link GenericDataAccessObject#getLastModifiedTimeStamp()}
+	 * {@link GenericDataObject#getModifiedTimeStamp()} greater than {@link GenericDataAccessObject#getLastModifiedTimeStamp()}
 	 * will be in the stream.
+	 * After the stream was consumed to its end, {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is updated
+	 * to the biggest modification time stamp of the data objects in the stream.
 	 * 
 	 * @return a stream of data objects
 	 * @throws DALException re-throws every exception as DAL exception
@@ -119,9 +124,11 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getRecent() throws DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
-	 * Only data objects which have {@link GenericDataObject#getCreatedTimeStamp()} or {@link GenericDataObject#getModifiedTimeStamp()}
-	 * smaller than {@link GenericDataAccessObject#getLastModifiedTimeStamp()} will be in the stream.
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericRecentDataObjectLoader}).
+	 * Only data objects which have {@link GenericDataObject#getModifiedTimeStamp()}
+	 * greater than {@link GenericDataAccessObject#getLastModifiedTimeStamp()} will be in the stream.
+	 * After the stream was consumed to its end, {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is updated
+	 * to the biggest modification time stamp of the data objects in the stream.
 	 * 
 	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) will also be returned
 	 * @return a stream of data objects
@@ -130,7 +137,10 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	public Stream<DO> getRecent(boolean returnDeleted) throws DALException;
 
 	/**
-	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericDefaultDataObjectLoader}).
+	 * Loads data objects according to the internal sourcing method (defined in the implementation of {@link GenericRecentDataObjectLoader}).
+	 * Only data objects which have {@link GenericDataObject#getModifiedTimeStamp()} greater than lastModTS will be in the stream.
+	 * {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is only updated (after the stream was consumed to its end)
+	 * if lastModTS equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()}.
 	 * 
 	 * @param lastModTS the value to overwrite the internal most recent modification time/date of data objects for this call
 	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) will also be returned
@@ -181,8 +191,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Flags a data object (DO) as deleted and removes it from the underlying data source.
-	 * After the call, the DO's deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
-	 * If it was physically deleted from the underlying data storage depends on the DAO's implementation.
+	 * After the call, the DO's deleted flag is supposed to be true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * Setting the flag is up to the DAO's implementation, as well as if the DO is physically deleted from the underlying data storage.
+	 * Nothing is deleted or flagged if a registered {@link DeleteListener} rejects the deletion.
 	 * 
 	 * @param dataObject the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
@@ -192,8 +203,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	
 	/**
 	 * Flags a data object (DO) as deleted and removes it from the underlying data source.
-	 * After the call, the DO's deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
-	 * If it was physically deleted from the underlying data storage depends on the DAO's implementation.
+	 * After the call, the DO's deleted flag is supposed to be true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * Setting the flag is up to the DAO's implementation, as well as if the DO is physically deleted from the underlying data storage.
+	 * Nothing is deleted or flagged if a registered {@link DeleteListener} rejects the deletion.
 	 * 
 	 * @param dataObject the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null or an instance of an incompatible class
@@ -203,8 +215,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Flags the data objects (DOs) as deleted and removes them from the underlying data source.
-	 * After the call, the DOs' deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
-	 * If they were physically deleted from the underlying data storage depends on the DAO's implementation.
+	 * After the call, the DOs' deleted flag is supposed to be true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * Setting the flag is up to the DAO's implementation, as well as if the DOs are physically deleted from the underlying data storage.
+	 * Nothing is deleted or flagged if a registered {@link DeleteListener} rejects the deletion.
 	 * 
 	 * @param dataObjects the data objects to delete as array
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
@@ -214,8 +227,9 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Flags the data objects (DOs) as deleted and removes them from the underlying data source.
-	 * After the call, the DOs' deleted flag is true ({@link GenericDataObject#getIsDeleted()} == true).
-	 * If they were physically deleted from the underlying data storage depends on the DAO's implementation.
+	 * After the call, the DOs' deleted flag is supposed to be true ({@link GenericDataObject#getIsDeleted()} == true).
+	 * Setting the flag is up to the DAO's implementation, as well as if the DOs are physically deleted from the underlying data storage.
+	 * Nothing is deleted or flagged if a registered {@link DeleteListener} rejects the deletion.
 	 * 
 	 * @param dataObjects the data objects to delete as collection
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null
@@ -230,7 +244,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * Otherwise it will be false.
 	 * 
 	 * @param dataObjectId the id of the data object to delete
-	 * @throws IllegalArgumentException thrown if parameter dataObjectIds is null
+	 * @throws IllegalArgumentException thrown if parameter dataObjectId is null
 	 * @throws DALException re-throws every exception as DAL exception
 	 */
 	public void delete(ID dataObjectId) throws IllegalArgumentException, DALException;

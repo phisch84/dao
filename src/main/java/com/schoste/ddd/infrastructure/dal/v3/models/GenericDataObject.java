@@ -43,8 +43,9 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Gets the time stamp of the creation date (first persistence in the underlying data storage).
-	 * If it wasn't persisted yet, the time stamp is expected to be 0.
+	 * Gets the time stamp of the creation date. It is set by the first call to {@link GenericDataObject#updateTimeStamps()},
+	 * which is either when the data object is created via the data access object or when it is persisted for the first time.
+	 * If neither happened yet, the time stamp is expected to be 0.
 	 * 
 	 * @return the time stamp of the creation date
 	 */
@@ -54,8 +55,7 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Sets the time stamp of the creation date (first persistence in the underlying data storage).
-	 * If it wasn't persisted yet, the time stamp is expected to be 0.
+	 * Sets the time stamp of the creation date (see {@link GenericDataObject#getCreatedTimeStamp()}).
 	 * 
 	 * @param createdTimeStamp the time stamp of the creation date
 	 */
@@ -65,8 +65,9 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Gets the time stamp of the last modification date (most recent presistence in the underlying data storage).
-	 * If it wasn't persisted yet, the time stamp is expected to be 0.
+	 * Gets the time stamp of the last modification date. It is set by every call to {@link GenericDataObject#updateTimeStamps()},
+	 * which is when the data object is created via the data access object and whenever it is persisted.
+	 * If neither happened yet, the time stamp is expected to be 0.
 	 * 
 	 * @return the time stamp of the last modification date
 	 */
@@ -76,8 +77,7 @@ public abstract class GenericDataObject<ID extends Serializable> implements Seri
 	}
 
 	/**
-	 * Sets the time stamp of the last modification date (most recent presistence in the underlying data storage).
-	 * If it wasn't persisted yet, the time stamp is expected to be 0.
+	 * Sets the time stamp of the last modification date (see {@link GenericDataObject#getModifiedTimeStamp()}).
 	 * 
 	 * @param modifiedTimeStamp the time stamp of the last modification date
 	 */

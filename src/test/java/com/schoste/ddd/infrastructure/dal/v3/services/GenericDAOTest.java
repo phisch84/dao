@@ -13,7 +13,7 @@ import org.junit.Test;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
- * Generic test class to test implementations of the GenericSerializationDAO class.
+ * Generic test class to test implementations of the {@link GenericDataAccessObject} interface.
  * This class provides standard test methods.
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
@@ -35,7 +35,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	 * Creates a new data object used in testing.
 	 * If {@link GenericDataAccessObject#createDataObject(Object...)} is used or not depends on the actual implementation
 	 * 
-	 * @param parameters controls which data access object is returned. It depends on the actual implementation
+	 * @param parameters controls which data object is returned. It depends on the actual implementation
 	 * @return a new data object
 	 * @throws Exception re-throws every exception
 	 */
@@ -50,8 +50,8 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	protected abstract void modifyDataObject(DO dataObject, Object ...parameters);
 
 	/**
-	 * Expects to find an existing data object (DO) with a given integer id.
-	 * In case the DO used for testing uses a different data type for its id than an integer,
+	 * Expects to find an existing data object (DO) with a given id of the type long.
+	 * In case the DO used for testing uses a different data type for its id than a long,
 	 * then the method must implement a conversion.
 	 * 
 	 * @param id the id of the existing data object
@@ -75,10 +75,11 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	protected abstract boolean clearRepositorySucceeded() throws Exception;
 
 	/**
-	 * Asserts that all registered get listeners contain a given number of data objects before getting
+	 * Asserts that all registered get listeners received a given number of data object ids
+	 * (or data object loaders in case no ids were requested) before getting
 	 * 
-	 * @param numOfexpectedDOs the number of expected data objects
-	 * @return true if all listeners contain the exact number of DOs, false otherwise
+	 * @param numOfexpectedDOs the number of expected data object ids
+	 * @return true if all listeners received the exact number of ids, false otherwise
 	 */
 	protected abstract boolean assertDefaultGetListenersBeforeGet(int numOfexpectedDOs);
 
@@ -233,7 +234,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
-	 * Asserts that the {@link GenericDataAccessObject#get(java.util.Collection)} method of a DAO implementation actually
+	 * Asserts that the {@link GenericDataAccessObject#get(Serializable[])} method of a DAO implementation actually
 	 * gets all data objects which have one of the provided ids
 	 * 
 	 * @throws Exception re-throws every exception
@@ -279,6 +280,75 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		Assert.assertTrue(actualDataObjectIds.containsAll(expectedDataObjectIds));
 		Assert.assertTrue(this.assertDefaultGetListenersDOLsBeforeGet(nomOfExpectedDOLs));
 		Assert.assertTrue(this.assertDefaultGetListenersAfterGet(NUM_DATA_OBJECTS));
+	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#get(java.util.Collection)} method of a DAO implementation actually
+	 * gets all data objects which have one of the provided ids
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetManyByCollection() throws Exception
+	{
+		int NUM_DATA_OBJECTS = 10;
+		Collection<ID> expectedDataObjectIds = new ArrayList<ID>(NUM_DATA_OBJECTS);
+
+		for (int i=0; i<NUM_DATA_OBJECTS; i++)
+		{
+			DO dataObject = this.createDataObject(-1L, "testGetManyByCollection", i);
+
+			this.getDataAccessObject().save(dataObject);
+
+			expectedDataObjectIds.add(dataObject.getId());
+		}
+
+		Collection<DO> dataObjects = this.getDataAccessObject().get(expectedDataObjectIds).toList();
+		Collection<ID> actualDataObjectIds = new ArrayList<ID>(dataObjects.size());
+
+		for (DO dataObject : dataObjects) actualDataObjectIds.add(dataObject.getId());
+
+		Assert.assertEquals(NUM_DATA_OBJECTS, dataObjects.size());
+		Assert.assertTrue(expectedDataObjectIds.containsAll(actualDataObjectIds));
+		Assert.assertTrue(actualDataObjectIds.containsAll(expectedDataObjectIds));
+	}
+
+	/**
+	 * Asserts that the {@link GenericDataAccessObject#get(Serializable[])} method of a DAO implementation
+	 * returns all existing data objects which have one of the provided ids, even if no data object exists
+	 * for one of the provided ids.
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testGetManyWithNotExisting() throws Exception
+	{
+		int NUM_DATA_OBJECTS = 30;
+		ID notExistingId = this.getNotExistingId();
+		ID[] dataObjectIds = (ID[]) Array.newInstance(notExistingId.getClass(), NUM_DATA_OBJECTS + 1);
+		Collection<ID> expectedDataObjectIds = new ArrayList<ID>(NUM_DATA_OBJECTS);
+
+		for (int i=0; i<NUM_DATA_OBJECTS; i++)
+		{
+			DO dataObject = this.createDataObject(-1L, "testGetManyWithNotExisting", i);
+
+			this.getDataAccessObject().save(dataObject);
+
+			dataObjectIds[i] = dataObject.getId();
+			expectedDataObjectIds.add(dataObject.getId());
+		}
+
+		dataObjectIds[NUM_DATA_OBJECTS] = notExistingId;
+
+		Collection<DO> dataObjects = this.getDataAccessObject().get(dataObjectIds).toList();
+		Collection<ID> actualDataObjectIds = new ArrayList<ID>(dataObjects.size());
+
+		for (DO dataObject : dataObjects) actualDataObjectIds.add(dataObject.getId());
+
+		Assert.assertEquals(NUM_DATA_OBJECTS, dataObjects.size());
+		Assert.assertTrue(expectedDataObjectIds.containsAll(actualDataObjectIds));
+		Assert.assertTrue(actualDataObjectIds.containsAll(expectedDataObjectIds));
 	}
 
 	/**
@@ -365,6 +435,13 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		this.doTestGetRecentCreatedAndSaved(numOfExpectedDOs);
 	}
 
+	/**
+	 * Performs the test of {@link GenericDAOTest#testGetRecentCreatedAndSaved()}: creates and saves 5 data objects
+	 * and one more that is flagged as deleted, and asserts what {@link GenericDataAccessObject#getRecent()} returns.
+	 * 
+	 * @param numOfExpectedDOs the number of data objects {@link GenericDataAccessObject#getRecent()} is expected to return
+	 * @throws Exception re-throws every exception
+	 */
 	protected void doTestGetRecentCreatedAndSaved(int numOfExpectedDOs) throws Exception
 	{
 		int numOfDataObjects = 5;
@@ -408,7 +485,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	 * Asserts that the {@link GenericDataAccessObject#getRecent()} method of a DAO implementation reads all
 	 * existing data objects (DOs) from the storage and regards the deleted flag as well as time stamps.
 	 * But it must not return DOs that were not saved yet.
-	 * In this test the expected data objects are created and persisted.
+	 * In this test a data object is created but not persisted, so no data objects are expected.
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -464,6 +541,13 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 		this.doTestGetRecentModified(numOfExpectedDOs);
 	}
 
+	/**
+	 * Performs the test of {@link GenericDAOTest#testGetRecentModified()}: modifies and saves 3 existing data objects
+	 * (one of them is flagged as deleted) and asserts what {@link GenericDataAccessObject#getRecent()} returns.
+	 * 
+	 * @param numOfExpectedDOs the number of data objects {@link GenericDataAccessObject#getRecent()} is expected to return
+	 * @throws Exception re-throws every exception
+	 */
 	protected void doTestGetRecentModified(int numOfExpectedDOs) throws Exception
 	{
 		int numOfDataObjects = 10;
@@ -744,7 +828,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 
 	/**
 	 * Asserts that the delete() method of a DAO implementation actually
-	 * deletes the file of a data object in the file system
+	 * deletes a data object and flags it as deleted
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -764,6 +848,28 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 	
 	/**
+	 * Asserts that the {@link GenericDataAccessObject#delete(Serializable)} method of a DAO implementation actually
+	 * deletes the data object with the given id
+	 * 
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testDeleteId() throws Exception
+	{
+		DO dataObject = this.createDataObject(0L, "testDeleteId");
+
+		this.getDataAccessObject().save(dataObject);
+
+		ID dataObjectId = dataObject.getId();
+
+		this.getDataAccessObject().delete(dataObjectId);
+
+		Assert.assertTrue(this.assertDefaultDeleteListenersBeforeDelete(1));
+		Assert.assertTrue(this.assertDefaultDeleteListenersAfterDelete(1));
+		Assert.assertNull(this.getDataAccessObject().get(dataObjectId));
+	}
+
+	/**
 	 * Asserts that the {@link GenericDAO#clear()} method works properly.
 	 * This test must be implemented by its extending class since {@link GenericDAO#clear()}
 	 * may be implemented specific to the implementation.
@@ -780,7 +886,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	/**
 	 * Asserts that data objects with virtual ids can be saved
 	 * 
-	 * @throws Exception
+	 * @throws Exception re-throws every exception
 	 */
 	@Test
 	public void testSaveNegativeId() throws Exception
@@ -799,7 +905,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	 * in the storage anyways. But no error should be thrown and nothing should
 	 * be saved.
 	 * 
-	 * @throws Exception
+	 * @throws Exception re-throws every exception
 	 */
 	@Test
 	public void testDeleteNegativeId() throws Exception
@@ -885,7 +991,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
-	 * Asserts that the {@link GenericDataAccessObject#delete(int[])} method of a DAO implementation actually
+	 * Asserts that the {@link GenericDataAccessObject#delete(Serializable[])} method of a DAO implementation actually
 	 * deletes data objects
 	 * 
 	 * @throws Exception re-throws every exception
@@ -919,8 +1025,8 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
-	 * Asserts that the {@link GenericDataAccessObject#getAll(java.util.function.Predicate)} method of a DAO implementation
-	 * actually returns a stream with all expected objects since no predicate (null) was provided
+	 * Asserts that the {@link GenericDataAccessObject#getAll()} method of a DAO implementation
+	 * actually returns a stream with all expected objects
 	 * 
 	 * @throws Exception re-throws every exception
 	 */

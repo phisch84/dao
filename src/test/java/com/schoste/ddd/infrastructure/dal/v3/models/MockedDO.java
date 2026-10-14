@@ -2,7 +2,7 @@ package com.schoste.ddd.infrastructure.dal.v3.models;
 
 /**
  * Example data object used in unit testing of the {@link MockedDAOImpl} implementation.
- * Uses an {@link Integer} as identifier {@link GenericDataObject#getId()}.
+ * Uses a {@link Long} as identifier {@link GenericDataObject#getId()}.
  * 
  * @author Philipp Schosteritsch <s.philipp@schoste.com>
  *

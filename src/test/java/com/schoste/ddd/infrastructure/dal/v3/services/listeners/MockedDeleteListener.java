@@ -83,9 +83,10 @@ public class MockedDeleteListener<T extends GenericDataObject<Long>> implements 
 	}
 
 	/**
-	 * Gets all data objects received before they were submitted for deleting
+	 * Gets the ids of all data objects received before they were submitted for deleting.
+	 * This includes the ids that were received instead of data objects.
 	 * 
-	 * @return a collection of data objects
+	 * @return a collection of data object ids
 	 */
 	public Collection<Long> getDOsReceivedBeforeDeleting()
 	{
@@ -99,9 +100,10 @@ public class MockedDeleteListener<T extends GenericDataObject<Long>> implements 
 	}
 
 	/**
-	 * Gets all data objects received after they were deleted
+	 * Gets the ids of all data objects received after they were deleted.
+	 * This includes the ids that were received instead of data objects.
 	 * 
-	 * @return a collection of data objects
+	 * @return a collection of data object ids
 	 */
 	public Collection<Long> getDOsReceivedAfterDeleting()
 	{
