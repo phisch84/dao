@@ -575,6 +575,10 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 
 			return dataObjStream;
 		}
+		catch (DALException e)
+		{
+			throw e;
+		}
 		catch (Exception e)
 		{
 			throw new DALException(e);
