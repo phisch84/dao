@@ -5,8 +5,12 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
+import com.schoste.ddd.infrastructure.dal.v3.services.DataObjectLoader;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDAO;
+import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataObjectLoader;
+import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoader;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
@@ -38,13 +42,38 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extend
 
 	/**
 	 * Gets the ids of all data objects which are currently in the mocked storage.
-	 * Used by the mocked data object loaders to determine the source records to load.
-	 * 
+	 * Used by the data object loaders to determine the source records to load.
+	 *
 	 * @return a copy of the ids of all data objects in the mocked storage
 	 */
 	public synchronized Collection<Long> getDataObjectIds()
 	{
 		return new ArrayList<Long>(this.dataObjects.keySet());
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * The source records are the ids to filter for if there are any. Otherwise these are the ids of all data objects
+	 * in the mocked storage at the time the loader is created.
+	 */
+	@Override
+	protected DataObjectLoader<?, Long, T> createDOLoader(Set<Long> ids) throws Exception
+	{
+		Collection<Long> sourceIds = ids.isEmpty() ? this.getDataObjectIds() : ids;
+
+		return new GenericDataObjectLoader<>(this, sourceIds.stream(), this::safeDoGet, ids);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * The source records are the ids of all data objects in the mocked storage at the time the loader is created.
+	 */
+	@Override
+	protected DataObjectLoader<?, Long, T> createRecentDOLoader(long lastModTS, boolean returnDeleted) throws Exception
+	{
+		return new GenericRecentDataObjectLoader<>(this, this.getDataObjectIds().stream(), this::safeDoGet, lastModTS, returnDeleted);
 	}
 
 	/**

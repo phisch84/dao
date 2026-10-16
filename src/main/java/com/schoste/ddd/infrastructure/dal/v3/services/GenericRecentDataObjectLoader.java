@@ -3,20 +3,21 @@ package com.schoste.ddd.infrastructure.dal.v3.services;
 import java.io.Serializable;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
- * Default boiler plate implementation of the {@link RecentDataObjectLoader} interface.
- * The check if a data object shall be discarded or reported is handled by the {@link #filterInDataObjAndUpdateMaxTS(GenericDataObject)} method.
- * When the loading ends, {@link #tryAdvance(Consumer)} updates the most recent modification time stamp of the data access object
- * (see {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)}).
+ * Data object loader for {@link GenericDataAccessObject#getRecent(long, boolean)}.
+ * It only reports data objects which were modified after a given time stamp (see {@link #filterIn(GenericDataObject)}).
+ * When the loading ends, it updates the most recent modification time stamp of the data access object
+ * (see {@link #onEndOfData()} and {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)}).
  *
  * @param <SR> the data type of a potential source record that needs to be converted into the actual data object
  * @param <ID> the data type of the data object's identifier
  * @param <DO> the data type of the actual data object returned by the loader.
  */
-abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable, DO extends GenericDataObject<ID>> extends DataObjectLoaderBase<SR, ID, DO> implements RecentDataObjectLoader<SR, ID, DO>
+public class GenericRecentDataObjectLoader<SR, ID extends Serializable, DO extends GenericDataObject<ID>> extends GenericDataObjectLoader<SR, ID, DO>
 {
     /**
      * The modification time stamp given to the loader. Data objects with a smaller or equal modification time stamp are discarded.
@@ -35,16 +36,17 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
     /**
      * Creates a new instance
-     * 
+     *
      * @param dataAccessObject the DAO for which the loader was created
-     * @param sourceRecordToDataObjConversionFn a method to convert data records from the data source to data objects
+     * @param sourceRecords the stream of source records from the data source. It is closed when the loader is closed
+     * @param sourceRecordToDataObjConversionFn a method to convert source records from the data source to data objects
      * @param lastModTS the modification date time stamp for filtering. Data objects with a smaller or equal time stamp will be filtered out
      * @param returnDeleted if true, data objects flagged as deleted (see {@link GenericDataObject#getIsDeleted()}) will be returned too.
-     * @throws IllegalArgumentException thrown if either dataAccessObject or sourceRecordToDataObjConversionFn are null
+     * @throws IllegalArgumentException thrown if dataAccessObject, sourceRecords or sourceRecordToDataObjConversionFn are null
      */
-    public GenericRecentDataObjectLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<SR, DO> sourceRecordToDataObjConversionFn, long lastModTS, boolean returnDeleted) throws IllegalArgumentException 
+    public GenericRecentDataObjectLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Stream<SR> sourceRecords, Function<SR, DO> sourceRecordToDataObjConversionFn, long lastModTS, boolean returnDeleted) throws IllegalArgumentException
     {
-        super(dataAccessObject, sourceRecordToDataObjConversionFn);
+        super(dataAccessObject, sourceRecords, sourceRecordToDataObjConversionFn, null);
 
         this.lastModTS = lastModTS;
         this.maxTS = lastModTS;
@@ -53,16 +55,16 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
 
     /**
      * Determines whether a data object shall be reported or not and keeps track of the biggest modification time stamp
-     * found in the reported data objects for a potential update (see {@link GenericDataAccessObject#setLastModifiedTimeStamp(long)}).
-     * The data access object itself is not updated by this method, but by {@link #tryAdvance(Consumer)}.
-     * 
+     * found in the reported data objects for a potential update (see {@link #onEndOfData()}).
+     *
      * A data object is discarded if it is null, if it is flagged as deleted and the loader shall not return deleted
      * data objects, or if its modification time stamp is not greater than the time stamp given to the loader.
-     * 
+     *
      * @param dataObj the data object to evaluate
      * @return true if the data object shall be reported, false if it shall be discarded
      */
-    protected boolean filterInDataObjAndUpdateMaxTS(DO dataObj)
+    @Override
+    protected boolean filterIn(DO dataObj)
     {
         if (dataObj == null) return false;
         if (dataObj.getIsDeleted() && !this.returnDeleted) return false;
@@ -74,69 +76,18 @@ abstract public class GenericRecentDataObjectLoader<SR, ID extends Serializable,
     }
 
     /**
-     * Gets the next source record from the data storage so it can be turned into a data object.
-     * If there are no more records or on error this method must return null. This is the only way to signal the end of the data:
-     * {@link #tryAdvance(Consumer)} keeps calling this method until it returns null or a source record yields a data object to report.
-     *
-     * @return the next source record from the data storage or null if there are no more records or on error
-     */
-    abstract protected SR getNextSourceRecord();
-
-    /**
-     * Implements {@link java.util.Spliterator#tryAdvance(Consumer)}.
-     * Polls source records via {@link #getNextSourceRecord()} until one of them yields a data object to report
-     * (see {@link #filterInDataObjAndUpdateMaxTS(GenericDataObject)}). Before a data object is reported,
-     * {@link #raiseAfterGet(GenericDataObject)} is called.
-     * Source records which can't be converted to a data object (the conversion function returns null, e.g. because
-     * no data object was found) are skipped. The loading ends if there are no more source records.
-     *
-     * When the loading ends, i.e. the stream was consumed to its end, the last modification time stamp of the data access object
-     * is set to the biggest modification time stamp of the reported data objects. This only happens if
-     * the time stamp given to the loader still equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()},
-     * i.e. it was not overridden by the caller. It does not happen on error (exception).
-     * 
-     * @param action the consumer of the stream that will take the next data object
-     * @return true if a data object was provided, false if there are no more data objects or on error
+     * Called by {@link #tryAdvance(Consumer)} when the stream was consumed to its end.
+     * Sets the last modification time stamp of the data access object to the biggest modification time stamp of the reported data objects.
+     * This only happens if the time stamp given to the loader still equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()},
+     * i.e. it was not overridden by the caller.
      */
     @Override
-    public boolean tryAdvance(Consumer<? super DO> action)
+    protected void onEndOfData()
     {
-        try
-        {
-            SR sourceRecord = this.getNextSourceRecord();
+        // if the user chose to override the last modification time stamp, DO NOT update it on the DAO...
+        if (this.lastModTS != this.dataAccessObject.getLastModifiedTimeStamp()) return;
 
-            while (sourceRecord != null)
-            {
-                DO dataObj = (DO) super.sourceRecordToDataObjConversionFn.apply(sourceRecord);
-
-                // source records without data object (not found or failed to load) are skipped by the filter
-                if (this.filterInDataObjAndUpdateMaxTS(dataObj))
-                {
-                    // raise the get-listener after the DO was loaded but before it is accepted in the output stream
-                    dataObj = this.raiseAfterGet(dataObj);
-
-                    action.accept(dataObj);
-
-                    return true;
-                }
-
-                sourceRecord = this.getNextSourceRecord();
-            }
-
-            // if the user chose to override the last modification time stamp, DO NOT update it on the DAO...
-            if (this.lastModTS != this.dataAccessObject.getLastModifiedTimeStamp()) return false;
-
-            // ... otherwise update it with the most recent time stamp returned from the storage
-            this.dataAccessObject.setLastModifiedTimeStamp(this.maxTS);
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            ex.printStackTrace(System.err);
-
-            return false;
-        }
+        // ... otherwise update it with the most recent time stamp returned from the storage
+        this.dataAccessObject.setLastModifiedTimeStamp(this.maxTS);
     }
-
 }

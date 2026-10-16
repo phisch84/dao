@@ -109,7 +109,7 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 
 	/**
 	 * Loads all data objects according to the internal sourcing method (defined in the implementation of the data object loader,
-	 * e.g. {@link GenericDefaultDataObjectLoader}).
+	 * e.g. {@link GenericDataObjectLoader}).
 	 * This includes data objects flagged as deleted (if returned by the storage) and is regardless of their time stamps.
 	 * Whether time stamps are updated in the DAO, or whether its listeners are notified also depends on the implementation of the interface
 	 * 
@@ -369,4 +369,4 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * @return a collection of {@link DeleteListener}
 	 */
 	public Collection<DeleteListener<ID, DO>> getOnDeleteListeners();
-}
+}

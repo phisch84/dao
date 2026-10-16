@@ -8,13 +8,13 @@ import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -39,12 +39,6 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	 * Initially and after {@link GenericDAO#clear()} it is {@link Long#MIN_VALUE}.
 	 */
 	protected long latestModificationTimeStamp = Long.MIN_VALUE;
-
-	/**
-	 * The conversion function passed to the data object loaders. It expects the source record to be the id of a data object
-	 * and loads the data object via {@link GenericDAO#safeDoGet(Object)}, so it returns null if no data object was found or on error.
-	 */
-	protected Function<?, DO> defaultSRtoDOConversionFn = srId -> this.safeDoGet(srId);
 
 	/**
 	 * The registered {@link GetListener}s. The order in which they are called is undefined.
@@ -279,42 +273,26 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 
 	/**
 	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll()}.
-	 * The loader is expected to be a {@link DefaultDataObjectLoader} (e.g. {@link GenericDefaultDataObjectLoader}).
-	 *
-	 * To be overwritten by the extending class.
-	 *
-	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
-	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
-	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
-	 * @return a data object loader that will poll the next available data object from the data source
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, Object... args) throws Exception;
-
-	/**
-	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link GenericDataAccessObject#get(Serializable[])} and {@link GenericDataAccessObject#get(Collection)}.
-	 * The loader is expected to be a {@link DefaultDataObjectLoader} (e.g. {@link GenericDefaultDataObjectLoader}).
+	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll()}, {@link GenericDataAccessObject#get(Serializable[])}
+	 * and {@link GenericDataAccessObject#get(Collection)}.
+	 * Usually this is a {@link GenericDataObjectLoader} that is fed with a stream of the storage's source records
+	 * and a conversion function like {@link GenericDAO#safeDoGet(Object)}.
 	 * If the set of ids is empty, the loader must not filter for ids and return all available data objects
 	 * (as promised by {@link GenericDataAccessObject#get(Serializable[])}).
 	 *
 	 * To be overwritten by the extending class.
 	 *
-	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
-	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
 	 * @param ids a set of ids that identify the data objects to load from the underlying storage. If empty, all data objects shall be loaded
-	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
 	 * @return a data object loader that will poll the next available data object from the data source
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, Set<ID> ids, Object... args) throws Exception;
+	protected abstract DataObjectLoader<?,ID,DO> createDOLoader(Set<ID> ids) throws Exception;
 
 	/**
 	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
 	 * so it can be processed in calls to {@link GenericDataAccessObject#getRecent()}, {@link GenericDataAccessObject#getRecent(boolean)}
 	 * and {@link GenericDataAccessObject#getRecent(long, boolean)}.
-	 * The loader is expected to be a {@link RecentDataObjectLoader} (e.g. {@link GenericRecentDataObjectLoader}).
+	 * Usually this is a {@link GenericRecentDataObjectLoader}.
 	 * The created data loader needs to be capable of filtering data objects out based on if they were flagged deleted
 	 * ({@link GenericDataObject#getIsDeleted()} == true) and if they were not modified after the given modification time stamp
 	 * ({@link GenericDataObject#getModifiedTimeStamp()} &lt;= lastModTS).
@@ -324,16 +302,13 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	 * {@link GenericDataAccessObject#getLastModifiedTimeStamp()} (as {@link GenericRecentDataObjectLoader} does).
 	 *
 	 * To be overwritten by the extending class.
-	 * 
-	 * @param dataAccessObject a reference to the instance of the DAO that creates and uses the loader
-	 * @param sourceRecordToDataObjConversionFn a function that will convert source records from the storage to an actual data object
+	 *
 	 * @param lastModTS the modification time stamp the data objects' modification time stamps are compared to
 	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) shall also be returned
-	 * @param args optional arguments (can be null). The usage of these arguments depends on the actual implementation
 	 * @return a data object loader that will poll the next available data object from the data source
 	 * @throws Exception re-throws every exception
 	 */
-	protected abstract DataObjectLoader<?,ID,DO> createRecentDOLoader(GenericDataAccessObject<ID, DO> dataAccessObject, Function<?, DO> sourceRecordToDataObjConversionFn, long lastModTS, boolean returnDeleted, Object... args) throws Exception;
+	protected abstract DataObjectLoader<?,ID,DO> createRecentDOLoader(long lastModTS, boolean returnDeleted) throws Exception;
 
 	/**
 	 * Updates the created and modified time stamp of a data object (DO) by calling its implementation of
@@ -639,7 +614,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 
 			Set<ID> filterInIds = new HashSet<>(Arrays.asList(actualIds));
 
-			return this.streamLoaded(this.createDOLoader(this, this.defaultSRtoDOConversionFn, filterInIds));
+			return this.streamLoaded(this.createDOLoader(filterInIds));
 		});
 	}
 
@@ -662,7 +637,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	@Override
 	public Stream<DO> getAll() throws DALException
 	{
-		return call(() -> this.streamLoaded(this.createDOLoader(this, this.defaultSRtoDOConversionFn)));
+		return call(() -> this.streamLoaded(this.createDOLoader(Collections.<ID>emptySet())));
 	}
 
 	/**
@@ -862,6 +837,6 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	@Override
 	public Stream<DO> getRecent(long lastModTS, boolean returnDeleted) throws DALException
 	{
-		return call(() -> this.streamLoaded(this.createRecentDOLoader(this, this.defaultSRtoDOConversionFn, lastModTS, returnDeleted)));
+		return call(() -> this.streamLoaded(this.createRecentDOLoader(lastModTS, returnDeleted)));
 	}
 }

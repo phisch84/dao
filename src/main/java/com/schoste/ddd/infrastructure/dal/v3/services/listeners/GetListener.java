@@ -5,7 +5,7 @@ import java.io.Serializable;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.DataObjectLoader;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataAccessObject;
-import com.schoste.ddd.infrastructure.dal.v3.services.GenericDefaultDataObjectLoader;
+import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataObjectLoader;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoader;
 
 /**
@@ -13,7 +13,7 @@ import com.schoste.ddd.infrastructure.dal.v3.services.GenericRecentDataObjectLoa
  * All the methods are invoked in the same thread which will perform the actual get operation.
  *
  * When streams of data objects are requested, the actual loading of data objects happens in the data object loader
- * (see {@link GenericDefaultDataObjectLoader#tryAdvance(java.util.function.Consumer)} and
+ * (see {@link GenericDataObjectLoader#tryAdvance(java.util.function.Consumer)} and
  * {@link GenericRecentDataObjectLoader#tryAdvance(java.util.function.Consumer)}).
  * When implementing data object loaders for a DAO, calls to {@link GetListener#onAfterGet(GenericDataObject)} are supposed to be made there.
  * Whether that happens depends on the actual implementation of the loaders.
@@ -69,7 +69,7 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * 
 	 * When calling {@link GenericDataAccessObject#get(Serializable[])}, {@link GenericDataAccessObject#get(java.util.Collection)},
 	 * {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}
-	 * the call is supposed to be made by the {@link GenericDefaultDataObjectLoader} and {@link GenericRecentDataObjectLoader}
+	 * the call is supposed to be made by the {@link GenericDataObjectLoader} and {@link GenericRecentDataObjectLoader}
 	 * implementation. If that happens depends on the actual implementation of the loaders.
 	 * In this case the returned DO is the one that is passed to another listener (if present) and finally returned to the caller.
 	 * 
