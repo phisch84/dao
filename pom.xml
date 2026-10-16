@@ -123,6 +123,12 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <compilerArgs>
+                            <!-- suppresses the warning of newer JDKs that release 8 is obsolete -->
+                            <arg>-Xlint:-options</arg>
+                        </compilerArgs>
+                    </configuration>
                 </plugin>
 
                 <!-- Every module also provides its test classes (e.g. the mocked DAO and the generic DAO tests) as test-jar -->
