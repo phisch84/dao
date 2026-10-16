@@ -1,16 +1,24 @@
 package com.schoste.ddd.infrastructure.dal.v3.services.mocked;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException;
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException;
 import com.schoste.ddd.infrastructure.dal.v3.models.MockedDO;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDAOTest;
 import com.schoste.ddd.infrastructure.dal.v3.services.GenericDataAccessObject;
@@ -336,5 +344,115 @@ public class MockedDAOImplTest extends GenericDAOTest<Long, MockedDO, MockedDAOI
 		this.getDataAccessObject().clear();
 		
 		return (this.getDataAccessObject().getRecent().collect(Collectors.toList()).size() == 0);
+	}
+
+	/**
+	 * Asserts that a failure while loading data objects is not swallowed, but ends the stream
+	 * with a {@link DALRuntimeException} which wraps the original exception in a {@link DALException}
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetAllFailsOnLoadingError() throws Exception
+	{
+		IllegalStateException loadingError = new IllegalStateException("loading error");
+
+		this.getDataAccessObject().registerOnGetListener(new GetListener<Long, MockedDO>()
+		{
+			@Override
+			public MockedDO onAfterGet(MockedDO dataObject)
+			{
+				throw loadingError;
+			}
+		});
+
+		try (Stream<MockedDO> doStream = this.getDataAccessObject().getAll())
+		{
+			doStream.forEach(dataObject -> Assert.fail("no data object expected"));
+
+			Assert.fail("DALRuntimeException expected");
+		}
+		catch (DALRuntimeException e)
+		{
+			Assert.assertFalse(e.getCause() instanceof BrokenRecordException);
+			Assert.assertSame(loadingError, e.getCause().getCause());
+		}
+	}
+
+	/**
+	 * Asserts that a record which can't be loaded causes a {@link BrokenRecordException},
+	 * after which the remaining data objects can still be loaded
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetAllReportsBrokenRecordAndContinues() throws Exception
+	{
+		Long brokenId = 3L;
+		IOException readError = new IOException("broken record");
+		MockedDAOImpl dao = new MockedDAOImpl()
+		{
+			@Override
+			protected synchronized MockedDO doGet(Long id) throws Exception
+			{
+				if (brokenId.equals(id)) throw readError;
+
+				return super.doGet(id);
+			}
+		};
+
+		try (Stream<MockedDO> doStream = this.getDataAccessObject().getAll())
+		{
+			dao.save(doStream.collect(Collectors.toList()));
+		}
+
+		Collection<MockedDO> loaded = new ArrayList<>();
+		Collection<BrokenRecordException> broken = new ArrayList<>();
+
+		try (Stream<MockedDO> doStream = dao.getAll())
+		{
+			Iterator<MockedDO> doIterator = doStream.iterator();
+
+			while (true)
+			{
+				try
+				{
+					if (!doIterator.hasNext()) break;
+
+					loaded.add(doIterator.next());
+				}
+				catch (DALRuntimeException e)
+				{
+					broken.add((BrokenRecordException) e.getCause());
+				}
+			}
+		}
+
+		Assert.assertEquals(dao.getDataObjectIds().size() - 1, loaded.size());
+		Assert.assertEquals(1, broken.size());
+		Assert.assertEquals(brokenId, broken.iterator().next().getSourceRecord());
+		Assert.assertSame(readError, broken.iterator().next().getCause());
+	}
+
+	/**
+	 * Asserts that exceptions thrown by the consumer of a stream of data objects are re-thrown as they are
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetAllPassesConsumerErrorsThrough() throws Exception
+	{
+		IllegalStateException consumerError = new IllegalStateException("consumer error");
+
+		try (Stream<MockedDO> doStream = this.getDataAccessObject().getAll())
+		{
+			doStream.forEach(dataObject -> { throw consumerError; });
+
+			Assert.fail("IllegalStateException expected");
+		}
+		catch (IllegalStateException e)
+		{
+			Assert.assertSame(consumerError, e);
+		}
 	}
 }

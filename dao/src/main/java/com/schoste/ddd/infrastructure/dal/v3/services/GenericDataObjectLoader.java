@@ -8,8 +8,11 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException;
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
 
@@ -22,6 +25,11 @@ import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
  * By default, data objects are filtered by their ids. Deriving classes can change the filter by overriding
  * {@link #filterIn(GenericDataObject)}, and react to the end of the data by overriding {@link #onEndOfData()}
  * (see {@link GenericRecentDataObjectLoader}).
+ *
+ * Source records which can't be converted to a data object because none was found (the conversion function returns null) are skipped.
+ * Source records which can't be converted because they are broken cause a {@link DALRuntimeException} with a {@link BrokenRecordException}
+ * as cause, after which the loading can be continued (see {@link #tryAdvance(Consumer)}).
+ * Any other failure while loading ends the stream with a {@link DALRuntimeException}.
  *
  * @param <SR> the data type of a potential source record (SR) that can be turned into a data object
  * @param <ID> the data type of the data objects' identifier (see {@link GenericDataObject#getId()} and {@link GenericDataObject#setId(Serializable)})
@@ -94,7 +102,7 @@ public class GenericDataObjectLoader<SR, ID extends Serializable, DO extends Gen
 
     /**
      * Called by {@link #tryAdvance(Consumer)} when there are no more source records, i.e. the stream was consumed to its end.
-     * It is not called on error (exception). Does nothing in this implementation.
+     * It is not called if loading failed. Does nothing in this implementation.
      */
     protected void onEndOfData()
     {
@@ -117,60 +125,99 @@ public class GenericDataObjectLoader<SR, ID extends Serializable, DO extends Gen
     }
 
     /**
+     * Calls a supplier and re-throws its exceptions as {@link DALRuntimeException}.
+     *
+     * @param <T> the class of the supplier's result
+     * @param supplier the supplier to call
+     * @return the result of the supplier
+     * @throws DALRuntimeException thrown if the supplier throws any exception
+     */
+    private static <T> T unchecked(Supplier<T> supplier) throws DALRuntimeException
+    {
+        try
+        {
+            return supplier.get();
+        }
+        catch (DALRuntimeException e)
+        {
+            throw e;
+        }
+        catch (RuntimeException e)
+        {
+            throw new DALRuntimeException(e);
+        }
+    }
+
+    /**
+     * Converts a source record to a data object via the conversion function.
+     *
+     * @param sourceRecord the source record to convert
+     * @return the data object, or null if no data object was found for the source record
+     * @throws DALRuntimeException thrown if the source record can't be converted (with a {@link BrokenRecordException} as cause)
+     */
+    protected DO convert(SR sourceRecord) throws DALRuntimeException
+    {
+        try
+        {
+            return this.sourceRecordToDataObjConversionFn.apply(sourceRecord);
+        }
+        catch (DALRuntimeException e)
+        {
+            throw e;
+        }
+        catch (RuntimeException e)
+        {
+            throw new DALRuntimeException(new BrokenRecordException(sourceRecord, e));
+        }
+    }
+
+    /**
      * Implements {@link Spliterator#tryAdvance(Consumer)}.
      * Polls source records until one of them yields a data object to report (see {@link #filterIn(GenericDataObject)}).
      * Before the data object is reported, {@link #raiseAfterGet(GenericDataObject)} is called.
      * If there are no more source records, {@link #onEndOfData()} is called.
-     * Exceptions are printed to {@link System#err} and end the loading.
+     *
+     * If a source record can't be converted to a data object, a {@link DALRuntimeException} with a {@link BrokenRecordException}
+     * as cause is thrown. The loader is positioned after the broken record, so calling this method again continues with the next record.
+     * Any other exception thrown while loading (e.g. by the source records or the listeners) ends the loading
+     * and is re-thrown as {@link DALRuntimeException}. Exceptions thrown by the action are re-thrown as they are.
      *
      * @param action the consumer of the stream that will take the next data object
-     * @return true if a data object was provided, false if there are no more data objects or on error
+     * @return true if a data object was provided, false if there are no more data objects
+     * @throws DALRuntimeException thrown if loading the next data object failed
      */
     @Override
-    public boolean tryAdvance(Consumer<? super DO> action)
+    public boolean tryAdvance(Consumer<? super DO> action) throws DALRuntimeException
     {
-        try
+        while (unchecked(this.sourceRecordIterator::hasNext))
         {
-            while (this.sourceRecordIterator.hasNext())
-            {
-                DO dataObj = this.sourceRecordToDataObjConversionFn.apply(this.sourceRecordIterator.next());
+            SR sourceRecord = unchecked(this.sourceRecordIterator::next);
+            DO dataObj = this.convert(sourceRecord);
 
-                if (!this.filterIn(dataObj)) continue;
+            if (!unchecked(() -> this.filterIn(dataObj))) continue;
 
-                // raise the get-listener after the DO was loaded but before it is accepted in the output stream
-                action.accept(this.raiseAfterGet(dataObj));
+            // raise the get-listener after the DO was loaded but before it is accepted in the output stream
+            action.accept(unchecked(() -> this.raiseAfterGet(dataObj)));
 
-                return true;
-            }
-
-            this.onEndOfData();
-
-            return false;
+            return true;
         }
-        catch (Exception ex)
-        {
-            ex.printStackTrace(System.err);
 
-            return false;
-        }
+        unchecked(() -> { this.onEndOfData(); return null; });
+
+        return false;
     }
 
     /**
      * Implements {@link Runnable#run()}.
      * Callback method for {@link Stream#onClose(Runnable)} which will be called by the encapsulating {@link Stream} class
-     * when it is closed. It calls {@link #close()}. Exceptions thrown by {@link #close()} are printed to {@link System#err} and not re-thrown.
+     * when it is closed. It calls {@link #close()}.
+     *
+     * @throws DALRuntimeException thrown if closing the loader failed
      */
     @Override
-    public void run()
+    public void run() throws DALRuntimeException
     {
-        try
-        {
-            this.close();
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace(System.err);
-        }
+        unchecked(() -> { this.close(); return null; });
     }
 
     /**

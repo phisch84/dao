@@ -54,8 +54,21 @@ public class DALException extends Exception
 	 */
 	public DALException(Throwable cause)
 	{
+		this(cause, true);
+	}
+
+	/**
+	 * Creates a new instance of the class for a given cause.
+	 * Deriving classes which need to initialize their own fields before the handler is notified
+	 * pass false and call {@link #invokeHandler(DALException)} themselves.
+	 *
+	 * @param cause the actual cause of the exception
+	 * @param notifyHandler if true, the handler is notified (see {@link #invokeHandler(DALException)})
+	 */
+	protected DALException(Throwable cause, boolean notifyHandler)
+	{
 		super(cause);
 
-		invokeHandler(this);
+		if (notifyHandler) invokeHandler(this);
 	}
 }

@@ -62,7 +62,7 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extend
 	{
 		Collection<Long> sourceIds = ids.isEmpty() ? this.getDataObjectIds() : ids;
 
-		return new GenericDataObjectLoader<>(this, sourceIds.stream(), this::safeDoGet, ids);
+		return new GenericDataObjectLoader<>(this, sourceIds.stream(), this::doGetUnchecked, ids);
 	}
 
 	/**
@@ -73,7 +73,7 @@ public abstract class GenericMockedDAO<T extends GenericDataObject<Long>> extend
 	@Override
 	protected DataObjectLoader<?, Long, T> createRecentDOLoader(long lastModTS, boolean returnDeleted) throws Exception
 	{
-		return new GenericRecentDataObjectLoader<>(this, this.getDataObjectIds().stream(), this::safeDoGet, lastModTS, returnDeleted);
+		return new GenericRecentDataObjectLoader<>(this, this.getDataObjectIds().stream(), this::doGetUnchecked, lastModTS, returnDeleted);
 	}
 
 	/**

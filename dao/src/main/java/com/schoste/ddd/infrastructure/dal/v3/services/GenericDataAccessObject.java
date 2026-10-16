@@ -127,7 +127,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * After the stream was consumed to its end, {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is updated
 	 * to the biggest modification time stamp of the data objects in the stream.
 	 * With {@link GenericRecentDataObjectLoader}, source records which can't be converted to a data object
-	 * (e.g. because it was not found or failed to load) are skipped.
+	 * (e.g. because it was not found) are skipped. If loading fails, consuming the stream throws a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException}
+	 * (with a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException} as cause if only a single record is broken).
 	 *
 	 * @return a stream of data objects
 	 * @throws DALException re-throws every exception as DAL exception
@@ -142,7 +143,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * After the stream was consumed to its end, {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is updated
 	 * to the biggest modification time stamp of the data objects in the stream.
 	 * With {@link GenericRecentDataObjectLoader}, source records which can't be converted to a data object
-	 * (e.g. because it was not found or failed to load) are skipped.
+	 * (e.g. because it was not found) are skipped. If loading fails, consuming the stream throws a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException}
+	 * (with a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException} as cause if only a single record is broken).
 	 *
 	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) will also be returned
 	 * @return a stream of data objects
@@ -157,7 +159,8 @@ public interface GenericDataAccessObject<ID extends Serializable, DO extends Gen
 	 * {@link GenericDataAccessObject#getLastModifiedTimeStamp()} is only updated (after the stream was consumed to its end)
 	 * if lastModTS equals {@link GenericDataAccessObject#getLastModifiedTimeStamp()}.
 	 * With {@link GenericRecentDataObjectLoader}, source records which can't be converted to a data object
-	 * (e.g. because it was not found or failed to load) are skipped.
+	 * (e.g. because it was not found) are skipped. If loading fails, consuming the stream throws a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException}
+	 * (with a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException} as cause if only a single record is broken).
 	 *
 	 * @param lastModTS the value to overwrite the internal most recent modification time/date of data objects for this call
 	 * @param returnDeleted if true, data objects flagged as deleted ({@link GenericDataObject#getIsDeleted()} == true) will also be returned

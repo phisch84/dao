@@ -18,7 +18,9 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException;
 import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.DeleteListener;
 import com.schoste.ddd.infrastructure.dal.v3.services.listeners.GetListener;
@@ -276,7 +278,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	 * so it can be processed in calls to {@link GenericDataAccessObject#getAll()}, {@link GenericDataAccessObject#get(Serializable[])}
 	 * and {@link GenericDataAccessObject#get(Collection)}.
 	 * Usually this is a {@link GenericDataObjectLoader} that is fed with a stream of the storage's source records
-	 * and a conversion function like {@link GenericDAO#safeDoGet(Object)}.
+	 * and a conversion function like {@link GenericDAO#doGetUnchecked(Object)}.
 	 * If the set of ids is empty, the loader must not filter for ids and return all available data objects
 	 * (as promised by {@link GenericDataAccessObject#get(Serializable[])}).
 	 *
@@ -362,25 +364,23 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 	}
 
 	/**
-	 * This method wraps a call to {@link GenericDAO#doGet(Serializable)} in a try-catch block and returns whatever
-	 * {@link GenericDAO#doGet(Serializable)} returns. In case of an exception it simply returns null.
-	 * In this case the returned value shall be discarded.
-	 * 
+	 * Calls {@link GenericDAO#doGet(Serializable)} and returns whatever it returns, but re-throws its exceptions unchecked,
+	 * so the method can be used as conversion function of data object loaders (see {@link GenericDataObjectLoader}).
+	 *
 	 * @param sourceRecordIdentifier any identifier that indicates the next record to load as data object from the data source
-	 * @return the data object of the source record or null if no source record was found or on error
+	 * @return the data object of the source record or null if no source record was found
+	 * @throws DALRuntimeException thrown if loading the data object failed (with a {@link BrokenRecordException} as cause)
 	 */
 	@SuppressWarnings("unchecked")
-	protected DO safeDoGet(Object sourceRecordIdentifier)
+	protected DO doGetUnchecked(Object sourceRecordIdentifier) throws DALRuntimeException
 	{
 		try
 		{
 			return this.doGet((ID) sourceRecordIdentifier);
 		}
-		catch(Exception ex)
+		catch (Exception ex)
 		{
-			ex.printStackTrace(System.err);
-
-			return null;
+			throw new DALRuntimeException(new BrokenRecordException(sourceRecordIdentifier, ex));
 		}
 	}
 

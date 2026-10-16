@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALException;
+import com.schoste.ddd.infrastructure.dal.v3.exceptions.DALRuntimeException;
 import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
 
 /**
@@ -20,7 +21,7 @@ import com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject;
  * in a folder of the file system (see {@link com.schoste.ddd.infrastructure.dal.v3.services.fs.GenericFileSystemDAO} and
  * {@link com.schoste.ddd.infrastructure.dal.v3.services.serialization.GenericSerializationDAO}).
  * The name of a data object's file is the string value of its id ({@link GenericDataObject#getId()}).
- * The data object loaders iterate over the files in the storage folder and load each data object via {@link #safeDoGet(Object)}.
+ * The data object loaders iterate over the files in the storage folder and load each data object via {@link #doGetUnchecked(Object)}.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
@@ -99,25 +100,17 @@ abstract public class AbstractFileSystemDAO<ID extends Serializable, DO extends 
 	 * Updates the created and modified time stamps of a given data object
 	 * ({@link GenericDataObject#getCreatedTimeStamp()} and {@link GenericDataObject#getModifiedTimeStamp()})
 	 * with the creation and last modification time stamps from the physical file where it is stored.
-	 * Exceptions (e.g. if the file's attributes cannot be read) are printed to {@link System#err} and not re-thrown.
-	 * In this case the data object is left unchanged.
 	 *
 	 * @param fileObject the data object to update
 	 * @param pathToFile the file to get the data from
+	 * @throws IOException thrown if the file's attributes cannot be read. In this case the data object is left unchanged
 	 */
-	protected synchronized void updateTimeStamp(DO fileObject, Path pathToFile)
+	protected synchronized void updateTimeStamp(DO fileObject, Path pathToFile) throws IOException
 	{
-		try
-		{
-			BasicFileAttributes attr = Files.readAttributes(pathToFile, BasicFileAttributes.class);
-	
-			fileObject.setCreatedTimeStamp(attr.creationTime().to(TimeUnit.MILLISECONDS));
-			fileObject.setModifiedTimeStamp(attr.lastModifiedTime().to(TimeUnit.MILLISECONDS));
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace(System.err);
-		}
+		BasicFileAttributes attr = Files.readAttributes(pathToFile, BasicFileAttributes.class);
+
+		fileObject.setCreatedTimeStamp(attr.creationTime().to(TimeUnit.MILLISECONDS));
+		fileObject.setModifiedTimeStamp(attr.lastModifiedTime().to(TimeUnit.MILLISECONDS));
 	}
 	
 	/**
@@ -192,27 +185,20 @@ abstract public class AbstractFileSystemDAO<ID extends Serializable, DO extends 
 	}
 
 	/**
-	 * Like {@link GenericDAO#safeDoGet(Object)}, but also accepts the path to the file of a data object as source record identifier
+	 * Like {@link GenericDAO#doGetUnchecked(Object)}, but also accepts the path to the file of a data object as source record identifier
 	 * (as provided by the data object loaders of this class). In this case the id is obtained from the file name (see {@link #toID(String)}).
 	 *
 	 * @param sourceRecordIdentifier the id of the data object to load, or the path to its file
-	 * @return the data object of the source record or null if no source record was found or on error
+	 * @return the data object of the source record or null if no source record was found
+	 * @throws DALRuntimeException thrown if loading the data object failed (with a {@link com.schoste.ddd.infrastructure.dal.v3.exceptions.BrokenRecordException} as cause)
+	 * @throws RuntimeException re-throws every exception thrown by {@link #toID(String)}
 	 */
 	@Override
-	protected DO safeDoGet(Object sourceRecordIdentifier)
+	protected DO doGetUnchecked(Object sourceRecordIdentifier) throws DALRuntimeException
 	{
-		try
-		{
-			if (sourceRecordIdentifier instanceof Path) sourceRecordIdentifier = this.toID(((Path) sourceRecordIdentifier).getFileName().toString());
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace(System.err);
+		if (sourceRecordIdentifier instanceof Path) sourceRecordIdentifier = this.toID(((Path) sourceRecordIdentifier).getFileName().toString());
 
-			return null;
-		}
-
-		return super.safeDoGet(sourceRecordIdentifier);
+		return super.doGetUnchecked(sourceRecordIdentifier);
 	}
 
 	/**
@@ -223,7 +209,7 @@ abstract public class AbstractFileSystemDAO<ID extends Serializable, DO extends 
 	@Override
 	protected DataObjectLoader<?, ID, DO> createDOLoader(Set<ID> ids) throws Exception
 	{
-		return new GenericDataObjectLoader<>(this, this.streamDataFiles(ids), this::safeDoGet, ids);
+		return new GenericDataObjectLoader<>(this, this.streamDataFiles(ids), this::doGetUnchecked, ids);
 	}
 
 	/**
@@ -234,7 +220,7 @@ abstract public class AbstractFileSystemDAO<ID extends Serializable, DO extends 
 	@Override
 	protected DataObjectLoader<?, ID, DO> createRecentDOLoader(long lastModTS, boolean returnDeleted) throws Exception
 	{
-		return new GenericRecentDataObjectLoader<>(this, this.streamDataFiles(null), this::safeDoGet, lastModTS, returnDeleted);
+		return new GenericRecentDataObjectLoader<>(this, this.streamDataFiles(null), this::doGetUnchecked, lastModTS, returnDeleted);
 	}
 
 	/**
@@ -288,35 +274,32 @@ abstract public class AbstractFileSystemDAO<ID extends Serializable, DO extends 
 	 * Clears the actual storage by deleting all regular files in the storage folder, including the ones in its sub folders.
 	 * The folders themselves are not deleted.
 	 *
-	 * Exceptions are printed to {@link System#err} and not re-thrown, so this implementation never throws an exception.
-	 * If a file cannot be deleted, the remaining files are still deleted.
+	 * If a file cannot be deleted, the remaining files are still deleted. Afterwards the exception of the first file
+	 * that could not be deleted is thrown (with the exceptions of the other files added as suppressed exceptions).
 	 *
-	 * @throws Exception declared by {@link GenericDAO#doClear()}, but never thrown by this implementation
+	 * @throws Exception re-throws every exception
 	 */
 	@Override
 	protected void doClear() throws Exception
 	{
-		try (Stream<Path> files = Files.walk(this.storagePath)) 
-		{
-		    files
-		        .filter(Files::isRegularFile)
-		        .forEach(file -> safeDelete(file));
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace(System.err);
-		}		
-	}
+		IOException failure = null;
 
-	private static void safeDelete(Path file)
-	{
-		try
+		try (Stream<Path> files = Files.walk(this.storagePath))
 		{
-			Files.delete(file);
+			for (Path file : (Iterable<Path>) files.filter(Files::isRegularFile)::iterator)
+			{
+				try
+				{
+					Files.delete(file);
+				}
+				catch (IOException e)
+				{
+					if (failure == null) failure = e;
+					else failure.addSuppressed(e);
+				}
+			}
 		}
-		catch (Exception e)
-		{
-			e.printStackTrace(System.err);
-		}
+
+		if (failure != null) throw failure;
 	}
 }
