@@ -53,21 +53,12 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- Spring (DI/AOP/IoC Framework) dependencies -->
+            <!-- Spring JDBC, used by tests to initialize databases (jdbc:initialize-database) -->
             <dependency>
                 <groupId>org.springframework</groupId>
-                <artifactId>spring-core</artifactId>
+                <artifactId>spring-jdbc</artifactId>
                 <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-context</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-orm</artifactId>
-                <version>${spring.version}</version>
+                <scope>test</scope>
             </dependency>
 
             <!-- Hibernate -->
@@ -93,8 +84,20 @@
         </dependencies>
     </dependencyManagement>
 
-    <!-- Testing dependencies common to all modules -->
+    <!-- Testing dependencies common to all modules (the libraries themselves don't depend on Spring) -->
     <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.schoste.ddd.testing</groupId>
             <artifactId>test-utils</artifactId>

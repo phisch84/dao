@@ -60,18 +60,17 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 
 	/**
 	 * Called after a data object was loaded and before it is returned to the caller.
-	 * The listener may change the DO.
+	 * The listener may change the DO or replace it by another instance:
+	 * the returned DO is the one that is passed to another listener (if present) and finally returned to the caller.
 	 * It isn't guaranteed that this method is called for every DO that is loaded from the storage.
-	 * 
+	 *
 	 * When calling {@link GenericDataAccessObject#get(Serializable)} this method is called by the DAO.
-	 * In this case the parameter is null if no data object was found, and the returned value is ignored:
-	 * the listener can change the DO, but it can't replace it by another instance.
-	 * 
+	 * In this case the parameter is null if no data object was found.
+	 *
 	 * When calling {@link GenericDataAccessObject#get(Serializable[])}, {@link GenericDataAccessObject#get(java.util.Collection)},
 	 * {@link GenericDataAccessObject#getAll()} and {@link GenericDataAccessObject#getRecent(long, boolean)}
 	 * the call is supposed to be made by the {@link GenericDataObjectLoader} and {@link GenericRecentDataObjectLoader}
 	 * implementation. If that happens depends on the actual implementation of the loaders.
-	 * In this case the returned DO is the one that is passed to another listener (if present) and finally returned to the caller.
 	 * 
 	 * @param dataObject the data object that was loaded and will be returned
 	 * @return the data object to return to the caller (usually the one provided as parameter)

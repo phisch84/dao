@@ -1026,6 +1026,29 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 	}
 
 	/**
+	 * Asserts that the {@link GenericDataAccessObject#delete(Serializable[])} method of a DAO implementation
+	 * ignores ids without data object and still deletes the data objects with the other ids
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testDeleteManyIdsWithNotExisting() throws Exception
+	{
+		DO dataObject = this.createDataObject(0L, "testDeleteManyIdsWithNotExisting", 0);
+
+		this.getDataAccessObject().save(dataObject);
+
+		ID[] dataObjectIds = (ID[]) Array.newInstance(dataObject.getId().getClass(), 2);
+			 dataObjectIds[0] = this.getNotExistingId();
+			 dataObjectIds[1] = dataObject.getId();
+
+		this.getDataAccessObject().delete(dataObjectIds);
+
+		Assert.assertNull(this.getDataAccessObject().get(dataObject.getId()));
+	}
+
+	/**
 	 * Asserts that the {@link GenericDataAccessObject#getAll()} method of a DAO implementation
 	 * actually returns a stream with all expected objects
 	 * 

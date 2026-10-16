@@ -7,18 +7,4 @@
     </parent>
     <artifactId>dao</artifactId>
     <name>Generic DAO</name>
-
-    <dependencies>
-        <!-- Spring (DI/AOP/IoC Framework) dependencies -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 </project>

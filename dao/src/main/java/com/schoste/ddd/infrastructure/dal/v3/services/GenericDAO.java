@@ -586,7 +586,7 @@ public abstract class GenericDAO <ID extends Serializable, DO extends GenericDat
 			DO dataObject = this.doGet(actualId);
 
 			// raise the event in the get-listeners for the loaded data object (after it was loaded)
-			for (GetListener<ID, DO> onGetListener : this.onGetListeners) onGetListener.onAfterGet(dataObject);
+			for (GetListener<ID, DO> onGetListener : this.onGetListeners) dataObject = onGetListener.onAfterGet(dataObject);
 
 			return dataObject;
 		});

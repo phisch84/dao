@@ -134,10 +134,10 @@ public abstract class GenericHibernateDAO <ID extends Serializable, DO extends G
 		{
 			for (ID dataObjectId : dataObjectIds)
 			{
-				DO dataObject = this.createDataObject();
+				Object dataObject = session.get(this.getDataObjectClass(), dataObjectId);
 
-				session.load(dataObject, dataObjectId);
-				session.remove(dataObject);
+				// ids without data object in the storage are ignored (as by the other DAO implementations)
+				if (dataObject != null) session.remove(dataObject);
 			}
 		});
 	}

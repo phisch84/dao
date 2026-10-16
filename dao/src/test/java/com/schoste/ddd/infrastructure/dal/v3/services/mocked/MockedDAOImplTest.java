@@ -347,6 +347,29 @@ public class MockedDAOImplTest extends GenericDAOTest<Long, MockedDO, MockedDAOI
 	}
 
 	/**
+	 * Asserts that {@link GenericDataAccessObject#get(java.io.Serializable)} returns the data object
+	 * returned by {@link GetListener#onAfterGet}, as the data object loaders do
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testGetReturnsDataObjectOfGetListener() throws Exception
+	{
+		MockedDO replacement = this.createDataObject(0L, "testGetReturnsDataObjectOfGetListener");
+
+		this.getDataAccessObject().registerOnGetListener(new GetListener<Long, MockedDO>()
+		{
+			@Override
+			public MockedDO onAfterGet(MockedDO dataObject)
+			{
+				return replacement;
+			}
+		});
+
+		Assert.assertSame(replacement, this.getDataAccessObject().get(1L));
+	}
+
+	/**
 	 * Asserts that a failure while loading data objects is not swallowed, but ends the stream
 	 * with a {@link DALRuntimeException} which wraps the original exception in a {@link DALException}
 	 *
