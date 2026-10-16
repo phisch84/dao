@@ -1,0 +1,44 @@
+<beans 
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+    http://www.springframework.org/schema/jdbc
+    http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
+	
+    <!--
+    Define a database script which will be executed on start
+    The attribute data-source refers to the bean id of the data source class
+    (e.g. org.apache.commons.dbcp.BasicDataSource)
+    -->
+    <bean id="hsqlTestDataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="org.hsqldb.jdbcDriver"/>
+        <property name="url" value="jdbc:hsqldb:mem:daoh" />
+        <property name="username" value="sa" />
+        <property name="password" value="" />
+    </bean>
+
+    <!-- Hibernate 7 SessionFactory Bean definitions -->
+    <bean id="sessionFactory" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetClass" value="com.schoste.ddd.infrastructure.dal.v3.services.hibernate.SessionFactoryBuilder"/>
+        <property name="targetMethod" value="buildSessionFactory"/>
+        <property name="arguments">
+            <list>
+                <map>
+                    <entry key="hibernate.connection.url" value="jdbc:hsqldb:mem:daoh" />
+                    <entry key="hibernate.connection.driver_class" value="org.hsqldb.jdbcDriver" />
+                    <entry key="hibernate.connection.username" value="sa" />
+                    <entry key="hibernate.connection.password" value="" />
+                    <entry key="hibernate.dialect" value="org.hibernate.dialect.HSQLDialect" />
+                    <entry key="hibernate.show_sql" value="true" />
+                </map>
+                <list>
+                    <value>META-INF/example-entities.xml</value>
+                </list>
+            </list>
+        </property>
+    </bean>
+</beans>

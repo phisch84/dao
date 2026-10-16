@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<entity-mappings
+    xmlns="http://java.sun.com/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm http://java.sun.com/xml/ns/persistence/orm_2_0.xsd"
+    version="2.0">
+
+    <!--
+    Since all DOs are supposed to extend this class it needs to be defined as mapped-superclass
+     -->
+	<mapped-superclass class="com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject" access="FIELD">
+	    <attributes>
+	        <id name="id">
+	            <!-- no column definition required here because property and column name are the same -->
+	        	<generated-value strategy="IDENTITY"/>
+	        </id>
+	        <basic name="createdTimeStamp">
+	        	<column name="created"/>
+	        </basic>
+	        <basic name="modifiedTimeStamp">
+	        	<column name="modified"/>
+	        </basic>
+	        <basic name="isDeleted">
+	        	<column name="deleted"/>
+	        </basic>
+	    </attributes>
+	</mapped-superclass>
+
+    <entity class="com.schoste.ddd.infrastructure.dal.v3.models.HibernateDO" name="HibernateDO">
+    	<table name="hibernate_do"/>
+        <attributes>
+            <basic name="exampleStringProperty">
+            	<column name="example_string_property"/>
+            </basic>
+        </attributes>
+   </entity>
+</entity-mappings>

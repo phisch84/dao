@@ -1,22 +1,31 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.schoste.ddd.infrastructure</groupId>
-    <artifactId>dao</artifactId>
+    <artifactId>dao-parent</artifactId>
     <version>4.0.0-SNAPSHOT</version>
-    <name>Generic DAO</name>
+    <packaging>pom</packaging>
+    <name>Generic DAO (parent)</name>
     <url>https://www.schoste.com/</url>
+
+    <modules>
+        <module>dao</module>
+        <module>dao-fs-serialization</module>
+        <module>dao-h</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.source.version>1.8</java.source.version>
-        <java.target.version>1.8</java.target.version>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.version>3.15.0</maven.version>
-        <maven.jar-plugin.version>3.5.0</maven.jar-plugin.version>
-        <maven.surfeire.version>3.5.5</maven.surfeire.version>
+        <!-- compiles against the Java 8 API, even if built with a newer JDK -->
+        <maven.compiler.release>8</maven.compiler.release>
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
+        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <junit.version>4.13.2</junit.version>
+        <!-- latest Spring version compatible with Java 8 -->
         <spring.version>5.3.39</spring.version>
+        <hibernate.version>5.6.15.Final</hibernate.version>
+        <dbcp.version>1.4</dbcp.version>
+        <hsql.version>2.7.4</hsql.version>
         <test-utils.version>0.3.RELEASE</test-utils.version>
     </properties>
 
@@ -27,22 +36,65 @@
         </repository>
     </repositories>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- Modules of this project -->
+            <dependency>
+                <groupId>com.schoste.ddd.infrastructure</groupId>
+                <artifactId>dao</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.schoste.ddd.infrastructure</groupId>
+                <artifactId>dao</artifactId>
+                <version>${project.version}</version>
+                <classifier>tests</classifier>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Spring (DI/AOP/IoC Framework) dependencies -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-core</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-context</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-orm</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
+
+            <!-- Hibernate -->
+            <dependency>
+                <groupId>org.hibernate</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${hibernate.version}</version>
+            </dependency>
+
+            <!-- Database drivers depend on the actual usage and therefore their scope is TEST -->
+            <dependency>
+                <groupId>commons-dbcp</groupId>
+                <artifactId>commons-dbcp</artifactId>
+                <version>${dbcp.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.hsqldb</groupId>
+                <artifactId>hsqldb</artifactId>
+                <version>${hsql.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Testing dependencies common to all modules -->
     <dependencies>
-
-        <!-- Spring (DI/AOP/IoC Framework) dependencies -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <version>${spring.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-            <version>${spring.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <dependency>
             <groupId>com.schoste.ddd.testing</groupId>
             <artifactId>test-utils</artifactId>
@@ -61,28 +113,23 @@
             <version>${spring.version}</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
-        <finalName>dao</finalName>
         <pluginManagement>
             <plugins>
                 <!-- Build and compiler plugin configuration -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${maven.version}</version>
-                    <configuration>
-                        <source>${java.source.version}</source>
-                        <target>${java.target.version}</target>
-                    </configuration>
+                    <version>${maven-compiler-plugin.version}</version>
                 </plugin>
 
+                <!-- Every module also provides its test classes (e.g. the mocked DAO and the generic DAO tests) as test-jar -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>${maven.jar-plugin.version}</version>
+                    <version>${maven-jar-plugin.version}</version>
                     <executions>
                         <execution>
                             <goals>
@@ -103,7 +150,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${maven.surfeire.version}</version>
+                    <version>${maven-surefire-plugin.version}</version>
                     <configuration>
                         <reuseForks>false</reuseForks>
                         <forkCount>1</forkCount>
@@ -112,7 +159,7 @@
             </plugins>
         </pluginManagement>
     </build>
-    
+
     <distributionManagement>
         <repository>
             <id>github</id>
