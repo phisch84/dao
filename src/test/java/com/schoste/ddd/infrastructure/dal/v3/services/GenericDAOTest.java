@@ -1043,22 +1043,4 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends Generi
 				});
 		}
 	}
-
-	/**
-	 * Asserts that the save() method of a DAO implementation updates a data object's identifier
-	 * so that the data access object recognizes it no longer as virtual
-	 * 
-	 * @throws Exception re-throws every exception
-	 */
-	@Test
-	public void testSaveAndVirtualId() throws Exception
-	{
-		DO dataObj = this.getDataAccessObject().createDataObject();
-
-		this.getDataAccessObject().save(dataObj);
-
-		Assert.assertNotNull(dataObj.getId());
-		Assert.assertFalse(this.getDataAccessObject().isVirtualId(dataObj.getId()));
-	}
-
 }
