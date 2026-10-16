@@ -1,10 +1,19 @@
 package com.schoste.ddd.infrastructure.dal.v3.services.hibernate;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.sql.DataSource;
+
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -28,6 +37,9 @@ public class HibernateDAOImplTest extends GenericHibernateDAOTest<Long, Hibernat
 {
 	@Autowired
 	protected HibernateDAO hibernateDAO;
+
+	@Autowired
+	protected DataSource hsqlTestDataSource;
 
 	protected Map<Long, Long> idMap = new HashMap<>();
 
@@ -258,5 +270,46 @@ public class HibernateDAOImplTest extends GenericHibernateDAOTest<Long, Hibernat
 	{
 		// TODO Auto-generated method stub
 		return true;
+	}
+
+	/**
+	 * Reads the time stamps of a data object directly from the storage (bypassing Hibernate)
+	 * and asserts that they equal the time stamps of the given data object.
+	 *
+	 * @param dataObject the data object to compare the stored time stamps with
+	 * @throws Exception re-throws every exception
+	 */
+	protected void assertStoredTimeStamps(HibernateDO dataObject) throws Exception
+	{
+		try (Connection connection = this.hsqlTestDataSource.getConnection();
+			 Statement statement = connection.createStatement();
+			 ResultSet resultSet = statement.executeQuery("SELECT created, modified FROM hibernate_do WHERE id = " + dataObject.getId()))
+		{
+			Assert.assertTrue(resultSet.next());
+			Assert.assertEquals(dataObject.getCreatedTimeStamp(), resultSet.getLong(1));
+			Assert.assertEquals(dataObject.getModifiedTimeStamp(), resultSet.getLong(2));
+		}
+	}
+
+	/**
+	 * Asserts that the time stamps of the data object are the ones stored when it is inserted and updated via the DAO
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void testInsertAndUpdateStoreTimeStampsOfDataObject() throws Exception
+	{
+		HibernateDO dataObject = this.getDataAccessObject().createDataObject();
+		dataObject.setExampleStringProperty("testInsertAndUpdateStoreTimeStampsOfDataObject");
+
+		this.getDataAccessObject().save(dataObject);
+		this.assertStoredTimeStamps(dataObject);
+
+		Thread.sleep(10);
+
+		dataObject.setExampleStringProperty("testInsertAndUpdateStoreTimeStampsOfDataObject changed");
+
+		this.getDataAccessObject().save(dataObject);
+		this.assertStoredTimeStamps(dataObject);
 	}
 }
