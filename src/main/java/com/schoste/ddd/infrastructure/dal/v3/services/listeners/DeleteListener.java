@@ -27,7 +27,7 @@ public interface DeleteListener<ID extends Serializable, DO extends GenericDataO
 	 * @param dataObjectToDelete the data object to delete
 	 * @return true if the DAO should delete the object or false if it should discard it
 	 */
-	boolean onBeforeDeleting(DO dataObjectToDelete);
+	default boolean onBeforeDeleting(DO dataObjectToDelete) { return true; }
 
 	/**
 	 * Called by the DAO before deleting any of the DOs in dataObjectsToDelete.
@@ -40,7 +40,7 @@ public interface DeleteListener<ID extends Serializable, DO extends GenericDataO
 	 * @param dataObjectsToDelete a collection of data objects to delete
 	 * @return true if the DAO should delete the objects or false if it should discard them
 	 */
-	boolean onBeforeDeleting(Collection<DO> dataObjectsToDelete);
+	default boolean onBeforeDeleting(Collection<DO> dataObjectsToDelete) { return true; }
 
 	/**
 	 * Called by the DAO before deleting any of the DOs with an id in dataObjectIdsToDelete.
@@ -52,26 +52,26 @@ public interface DeleteListener<ID extends Serializable, DO extends GenericDataO
 	 * @param dataObjectIdsToDelete an array of ids of data objects to delete
 	 * @return an array of ids of data objects to actually delete
 	 */
-	ID[] onBeforeDeleting(ID[] dataObjectIdsToDelete);
+	default ID[] onBeforeDeleting(ID[] dataObjectIdsToDelete) { return dataObjectIdsToDelete; }
 
 	/**
 	 * Called by the DAO after the DO was successfully deleted.
 	 * 
 	 * @param dataObjectDeleted the DO that was deleted in the firing call
 	 */
-	void onAfterDeleted(DO dataObjectDeleted);
+	default void onAfterDeleted(DO dataObjectDeleted) { }
 
 	/**
 	 * Called by the DAO after the DOs were successfully deleted.
 	 * 
 	 * @param dataObjectsDeleted a collection of DOs that were deleted in the firing call
 	 */
-	void onAfterDeleted(Collection<DO> dataObjectsDeleted);
+	default void onAfterDeleted(Collection<DO> dataObjectsDeleted) { }
 
 	/**
 	 * Called by the DAO after the DOs were successfully deleted.
 	 * 
 	 * @param dataObjectIdsDeleted an array of DO ids that were deleted in the firing call
 	 */
-	void onAfterDeleted(ID[] dataObjectIdsDeleted);
+	default void onAfterDeleted(ID[] dataObjectIdsDeleted) { }
 }

@@ -27,7 +27,7 @@ public interface SaveListener<ID extends Serializable, DO extends GenericDataObj
 	 * @param dataObjectToSave the data object to save
 	 * @return true if the DAO should save the object or false if it should discard it
 	 */
-	boolean onBeforeSaving(DO dataObjectToSave);
+	default boolean onBeforeSaving(DO dataObjectToSave) { return true; }
 
 	/**
 	 * Called by the DAO before saving any of the DOs in dataObjectsToSave.
@@ -40,19 +40,19 @@ public interface SaveListener<ID extends Serializable, DO extends GenericDataObj
 	 * @param dataObjectsToSave a collection of data objects to save
 	 * @return true if the DAO should save the objects or false if it should discard them
 	 */
-	boolean onBeforeSaving(Collection<DO> dataObjectsToSave);
+	default boolean onBeforeSaving(Collection<DO> dataObjectsToSave) { return true; }
 
 	/**
 	 * Called by the DAO after the DO was successfully saved.
 	 * 
 	 * @param dataObjectSaved the DO that was saved in the firing call
 	 */
-	void onAfterSaved(DO dataObjectSaved);
+	default void onAfterSaved(DO dataObjectSaved) { }
 
 	/**
 	 * Called by the DAO after the DOs were successfully saved.
 	 * 
 	 * @param dataObjectsSaved a collection of DOs that were saved in the firing call
 	 */
-	void onAfterSaved(Collection<DO> dataObjectsSaved);
+	default void onAfterSaved(Collection<DO> dataObjectsSaved) { }
 }

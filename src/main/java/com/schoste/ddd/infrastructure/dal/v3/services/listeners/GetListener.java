@@ -33,7 +33,7 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * @param id the id of the data object to get
 	 * @return the actual id to get via the DAO
 	 */
-	ID onBeforeGet(ID id);
+	default ID onBeforeGet(ID id) { return id; }
 
 	/**
 	 * Always called before requesting data objects with given ids
@@ -46,7 +46,7 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * @param ids the ids of the data object to get
 	 * @return the actual ids to get via the DAO, or null if {@link GenericDataAccessObject#getAll()} should be called
 	 */
-	ID[] onBeforeGet(ID[] ids);
+	default ID[] onBeforeGet(ID[] ids) { return ids; }
 
 	/**
 	 * Always called after creating the data object loader and before requesting data objects.
@@ -56,7 +56,7 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 *
 	 * @param dataObjLoader the data object loader that will be used to load the data
 	 */
-	void onBeforeGet(DataObjectLoader<?, ID, DO> dataObjLoader);
+	default void onBeforeGet(DataObjectLoader<?, ID, DO> dataObjLoader) { }
 
 	/**
 	 * Called after a data object was loaded and before it is returned to the caller.
@@ -76,5 +76,5 @@ public interface GetListener<ID extends Serializable, DO extends GenericDataObje
 	 * @param dataObject the data object that was loaded and will be returned
 	 * @return the data object to return to the caller (usually the one provided as parameter)
 	 */
-	DO onAfterGet(DO dataObject);
+	default DO onAfterGet(DO dataObject) { return dataObject; }
 }
