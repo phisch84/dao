@@ -3,77 +3,62 @@ package com.schoste.ddd.infrastructure.dao.v4.services.listeners;
 import java.io.Serializable;
 
 import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
-import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
 import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
-import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader;
-import com.schoste.ddd.infrastructure.dao.v4.services.GenericRecentDataObjectLoader;
+import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
+import com.schoste.ddd.infrastructure.dao.v4.services.DeletedDataObjects;
 
 /**
- * Interface to a listener which is notified before or after data objects (DOs) are requested from the data access object (DAO).
- * All the methods are invoked in the same thread which will perform the actual get operation.
+ * Listener which is called before data objects are got from a DAO ({@link DAO}) and after they were loaded.
+ * It may change the requested ids and the loaded data objects. Register it by {@link DAO#registerOnGetListener(GetListener)};
+ * listeners are called in the order of their registration. All methods have default implementations which change nothing.
  *
- * When streams of data objects are requested, the actual loading of data objects happens in the data object loader
- * (see {@link SourceRecordDataObjectLoader#tryAdvance(java.util.function.Consumer)} and
- * {@link GenericRecentDataObjectLoader#tryAdvance(java.util.function.Consumer)}).
- * When implementing data object loaders for a DAO, calls to {@link GetListener#onAfterGet(DataObject)} are supposed to be made there.
- * Whether that happens depends on the actual implementation of the loaders.
- * 
- * @param <ID> the data type of the data object's unique identifier
- * @param <DO> the data type of the data object
+ * The before-methods are called in the thread which calls the DAO. For streams, {@link #onAfterGet(DataObject)} is called
+ * while the stream is consumed, i.e. possibly later and in the thread which consumes the stream.
+ * An exception thrown by a listener ends the operation; the DAO throws it as {@link com.schoste.ddd.infrastructure.dao.v4.exceptions.DAOException}
+ * (or as {@link com.schoste.ddd.infrastructure.dao.v4.exceptions.DAORuntimeException} while a stream is consumed).
+ *
+ * @param <ID> the class of the data objects' ids
+ * @param <DO> the class of the data objects
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
- *
  */
 public interface GetListener<ID extends Serializable, DO extends DataObject<ID>>
 {
 	/**
-	 * Always called before requesting a data object with a given id
-	 * (see {@link DAO#get(Serializable)}).
-	 * The listener may change the id by returning a new one.
+	 * Called before the data object with the given id is got ({@link DAO#get(Serializable)}).
+	 * The listener may request another id by returning it.
 	 *
-	 * @param id the id of the data object to get
-	 * @return the actual id to get via the DAO
+	 * @param id the requested id
+	 * @return the id to get; must not be null (the DAO throws an {@link IllegalStateException} then)
 	 */
 	default ID onBeforeGet(ID id) { return id; }
 
 	/**
-	 * Always called before requesting data objects with given ids
-	 * (see {@link DAO#get(java.util.Collection)}).
-	 * The listener may change the ids by returning new ones.
+	 * Called before the data objects with the given ids are got ({@link DAO#get(java.util.Collection)}).
+	 * It isn't called by {@link DAO#getAll()} and {@link DAO#getModifiedSince(long, DeletedDataObjects)}.
+	 * The listener may request other ids by returning them; an empty array makes the DAO provide no data objects.
 	 *
-	 * This method is not called for {@link DAO#getAll()}.
-	 * If null is returned, the DAO stops calling this method on the remaining listeners and returns the result of {@link DAO#getAll()}.
-	 * 
-	 * @param ids the ids of the data object to get
-	 * @return the actual ids to get via the DAO, or null if {@link DAO#getAll()} should be called
+	 * @param ids the requested ids
+	 * @return the ids to get; must not be null (the DAO throws an {@link IllegalStateException} then)
 	 */
 	default ID[] onBeforeGet(ID[] ids) { return ids; }
 
 	/**
-	 * Always called after creating the data object loader and before requesting data objects.
-	 * (see {@link DAO#get(java.util.Collection)},
-	 * {@link DAO#getAll()} and {@link DAO#getModifiedSince(long)}).
-	 * The listener may change the state of the data object loader provided as parameter, but it can't replace it.
+	 * Called before a stream of data objects is returned ({@link DAO#get(java.util.Collection)}, {@link DAO#getAll(DeletedDataObjects)},
+	 * {@link DAO#getModifiedSince(long, DeletedDataObjects)}), with the loader which will load its data objects.
+	 * The listener may change the state of the loader, but it can't replace it.
 	 *
-	 * @param dataObjLoader the data object loader that will be used to load the data
+	 * @param dataObjLoader the loader which will load the data objects
 	 */
 	default void onBeforeGet(DataObjectLoader<?, ID, DO> dataObjLoader) { }
 
 	/**
-	 * Called after a data object was loaded and before it is returned to the caller.
-	 * The listener may change the DO or replace it by another instance:
-	 * the returned DO is the one that is passed to another listener (if present) and finally returned to the caller.
-	 * It isn't guaranteed that this method is called for every DO that is loaded from the storage.
+	 * Called after a data object was loaded and before it is provided to the caller; never with null (it isn't called if
+	 * no data object was found). The listener may change the data object or replace it by returning another one;
+	 * the returned data object is passed to the next listener and finally provided. If null is returned, the data object
+	 * isn't provided.
 	 *
-	 * When calling {@link DAO#get(Serializable)} this method is called by the DAO.
-	 * In this case the parameter is null if no data object was found.
-	 *
-	 * When calling {@link DAO#get(java.util.Collection)},
-	 * {@link DAO#getAll()} and {@link DAO#getModifiedSince(long)}
-	 * the call is supposed to be made by the {@link SourceRecordDataObjectLoader} and {@link GenericRecentDataObjectLoader}
-	 * implementation. If that happens depends on the actual implementation of the loaders.
-	 * 
-	 * @param dataObject the data object that was loaded and will be returned
-	 * @return the data object to return to the caller (usually the one provided as parameter)
+	 * @param dataObject the loaded data object
+	 * @return the data object to provide (usually the given one)
 	 */
 	default DO onAfterGet(DO dataObject) { return dataObject; }
 }

@@ -39,10 +39,9 @@ public class HibernateDAOImpl extends AbstractHibernateDAO<Long, HibernateDO> im
 	 *
 	 * Negative identifiers are virtual.
 	 *
-	 * @throws NullPointerException thrown if the id is null
 	 */
 	@Override
-	public boolean isVirtualId(Long id)
+	protected boolean doIsVirtualId(Long id)
 	{
 		return (id < 0L);
 	}
@@ -71,7 +70,7 @@ public class HibernateDAOImpl extends AbstractHibernateDAO<Long, HibernateDO> im
 	 * Virtual identifiers are negative and strictly decreasing, derived from the current time in milliseconds.
 	 */
 	@Override
-	protected Long doCreateVirtualId() throws Exception
+	protected synchronized Long doCreateVirtualId() throws Exception
 	{
 		long virtualId = System.currentTimeMillis()*(-1);
 

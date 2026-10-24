@@ -39,10 +39,9 @@ public class InMemoryDAOImpl extends AbstractInMemoryDAO<InMemoryDO>
 	/**
 	 * {@inheritDoc}
 	 */
-	@Override 
-	public boolean isVirtualId(Long id)
+	@Override
+	protected boolean doIsVirtualId(Long id)
 	{
-		if (id == null) return false;
 		if (id >= 0) return false;
 
 		return true;
@@ -52,7 +51,7 @@ public class InMemoryDAOImpl extends AbstractInMemoryDAO<InMemoryDO>
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected Long doCreateVirtualId() throws Exception 
+	protected synchronized Long doCreateVirtualId() throws Exception 
 	{
 		long virtualId = System.currentTimeMillis()*(-1);
 

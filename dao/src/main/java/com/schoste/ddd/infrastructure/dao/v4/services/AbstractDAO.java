@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -27,35 +28,46 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.GetListener;
 import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
 
 /**
- * Basic class with functionality common to all other generic data access objects
- * 
- * @author Philipp Schosteritsch
+ * Base class for implementations of the {@link DAO} interface (DAO = Data Access Object) for a storage.
  *
- * @param <ID> the class of the data objects' identifier
- * @param <DO> the class of the data object to persist
+ * This class implements the parts of the contract of {@link DAO} which are the same for every storage: checking the arguments,
+ * calling the listeners in the order of their registration, logical deletion, deleting by ids, wrapping data object loaders in
+ * streams, and wrapping exceptions in {@link DAOException}. An implementation only implements the protected methods whose names
+ * start with {@code do}; they access the storage. They may throw any exception, which this class wraps.
+ *
+ * What an implementation must guarantee:
+ * <ul>
+ * <li>Its {@code do} methods are thread-safe, since a DAO instance is used by several threads.</li>
+ * <li>{@link #doSave(DataObject)} and {@link #doSave(Collection)} set the time stamps from the storage's clock
+ * (see {@link #updateTimestamps(DataObject, long)}) and give new data objects their actual ids.</li>
+ * <li>Its data object loaders are lazy: they never load all data objects into memory at once.</li>
+ * <li>{@link #doIsVirtualId(Serializable)} recognizes the ids created by {@link #doCreateVirtualId()}, without accessing the storage.</li>
+ * </ul>
+ * By default, data objects are deleted logically: {@link #doDelete(DataObject)} sets the deleted flag and saves the data object.
+ * An implementation which deletes physically overrides {@link #doDelete(DataObject)} and {@link #doDelete(Collection)},
+ * and says so in its class documentation with the sentence "Deletes physically: deletions are not reported by change tracking."
+ *
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
+ *
+ * @param <ID> the class of the data objects' ids
+ * @param <DO> the class of the data objects
  */
 public abstract class AbstractDAO <ID extends Serializable, DO extends DataObject<ID>> implements DAO<ID, DO>
 {
 	/**
-	 * The most recent modification time stamp of data objects (see {@link DAO#getLastModifiedTimeStamp()}).
-	 * Initially and after {@link AbstractDAO#clear()} it is {@link Long#MIN_VALUE}.
-	 */
-	protected long latestModificationTimeStamp = Long.MIN_VALUE;
-
-	/**
-	 * The registered {@link GetListener}s. The order in which they are called is undefined.
+	 * The registered {@link GetListener}s, in the order of their registration.
 	 * The set is thread-safe, so listeners can be (un-)registered while they are being called.
 	 */
 	protected Set<GetListener<ID, DO>> onGetListeners = new CopyOnWriteArraySet<>();
 
 	/**
-	 * The registered {@link SaveListener}s. The order in which they are called is undefined.
+	 * The registered {@link SaveListener}s, in the order of their registration.
 	 * The set is thread-safe, so listeners can be (un-)registered while they are being called.
 	 */
 	protected Set<SaveListener<ID, DO>> onSaveListeners = new CopyOnWriteArraySet<>();
 
 	/**
-	 * The registered {@link DeleteListener}s. The order in which they are called is undefined.
+	 * The registered {@link DeleteListener}s, in the order of their registration.
 	 * The set is thread-safe, so listeners can be (un-)registered while they are being called.
 	 */
 	protected Set<DeleteListener<ID, DO>> onDeleteListeners = new CopyOnWriteArraySet<>();
@@ -111,6 +123,21 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	}
 
 	/**
+	 * Sets the time stamps of a data object which the storage has just stored: the modification time stamp always,
+	 * the creation time stamp only if it hasn't been set yet (it is smaller than 1).
+	 * Meant for implementations of {@link #doSave(DataObject)} and {@link #doSave(Collection)}.
+	 *
+	 * @param dataObject the stored data object
+	 * @param storageTimestamp the time of the storage's clock when it stored the data object, in milliseconds since 1970-01-01 UTC
+	 */
+	protected static void updateTimestamps(DataObject<?> dataObject, long storageTimestamp)
+	{
+		if (dataObject.getCreatedTimestamp() < 1) dataObject.setCreatedTimestamp(storageTimestamp);
+
+		dataObject.setModifiedTimestamp(storageTimestamp);
+	}
+
+	/**
 	 * Makes sure a listener to (un-)register is not null.
 	 *
 	 * @param <L> the class of the listener
@@ -126,8 +153,25 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	}
 
 	/**
+	 * Makes sure a collection argument is neither null nor contains null.
+	 *
+	 * @param collection the collection to check
+	 * @param name the name of the argument
+	 * @throws IllegalArgumentException thrown if the collection is null or contains null
+	 */
+	private static void requireElements(Collection<?> collection, String name) throws IllegalArgumentException
+	{
+		if (collection == null) throw new IllegalArgumentException(name);
+
+		for (Object element : collection)
+		{
+			if (element == null) throw new IllegalArgumentException(name);
+		}
+	}
+
+	/**
 	 * Copies a collection of ids into an array of the ids' class (see {@link AbstractDAO#getDataObjectIdClass()}),
-	 * as needed by the listeners which take id arrays.
+	 * as needed by {@link GetListener#onBeforeGet(Serializable[])}.
 	 *
 	 * @param ids the ids to copy
 	 * @return a new array with the ids
@@ -140,200 +184,135 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	}
 
 	/**
-	 * Raises the event in the get-listeners for a data object loader and wraps the loader in a stream (see {@link AbstractDAO#toStream(DataObjectLoader)}).
-	 * Events for the loaded data objects are supposed to be raised by the data object loader.
+	 * Calls {@link GetListener#onBeforeGet(DataObjectLoader)} of the get listeners and wraps the loader in a stream.
+	 * The data objects are loaded lazily by the loader while the stream is consumed; closing the stream closes the loader.
 	 *
 	 * @param doLoader the data object loader
-	 * @return a stream of the data objects provided by the loader
+	 * @return a sequential stream of the data objects provided by the loader
 	 * @throws Exception re-throws every exception
 	 */
 	private Stream<DO> streamLoaded(DataObjectLoader<?, ID, DO> doLoader) throws Exception
 	{
 		for (GetListener<ID, DO> onGetListener : this.onGetListeners) onGetListener.onBeforeGet(doLoader);
 
-		return this.toStream(doLoader);
+		return StreamSupport.stream(doLoader, false).onClose(doLoader);
 	}
 
 	/**
-	 * The method that actually creates a data object and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
+	 * Creates the instance of a new data object. {@link #createDataObject()} gives it a virtual id afterwards.
 	 *
-	 * @return a new instance of the DO
+	 * @return a new instance of the data object class
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract DO doCreateDataObject() throws Exception;
 
 	/**
-	 * The method that actually gets a data object and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param id the id of the data object to get
-	 * @return the data object with the given id or null if not found
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract DO doGet(ID id) throws Exception;
-
-	/**
-	 * The method to actually save the data object and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param dataObject the data object to save
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract void doSave(DO dataObject) throws Exception;
-
-	/**
-	 * The method to actually save the data objects and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param dataObjects the data objects to save
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract void doSave(Collection<DO> dataObjects) throws Exception;
-
-	/**
-	 * The method to actually delete the data object and needs to be implemented by its deriving class.
-	 * The implementation is expected to flag the data object as deleted ({@link DataObject#setDeleted(boolean)}),
-	 * as this class does not do it.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param dataObject the data object to delete
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract void doDelete(DO dataObject) throws Exception;
-
-	/**
-	 * The method to actually delete the data objects and needs to be implemented by its deriving class.
-	 * The implementation is expected to flag the data objects as deleted ({@link DataObject#setDeleted(boolean)}),
-	 * as this class does not do it.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param dataObjects the data objects to delete
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract void doDelete(Collection<DO> dataObjects) throws Exception;
-
-	/**
-	 * The method to actually delete the data objects with given ids and needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * @param dataObjectIds the ids of the data objects to delete
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract void doDelete(ID[] dataObjectIds) throws Exception;
-
-	/**
-	 * Clears the actual storage. This method needs to be implemented by its deriving class.
-	 * Consider implementing the method synchronized for thread safety.
-	 * 
-	 * To be overwritten by the extending class.
-	 * @throws Exception re-throws every exception
-	 */
-	protected abstract void doClear() throws Exception;
-
-	/**
-	 * Returns a datum that can be used to uniquely identify data objects that haven't been persisted yet.
-	 * It is called by {@link AbstractDAO#createDataObject()} to set the id of the newly created data object.
+	 * Creates a new, unique virtual id for a new data object (see {@link #createDataObject()}).
+	 * {@link #doIsVirtualId(Serializable)} must recognize it as virtual.
 	 *
-	 * @return a datum that can be used to uniquely identify a data object that hasn't been persisted yet
+	 * @return a new virtual id
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract ID doCreateVirtualId() throws Exception;
 
 	/**
-	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link DAO#getAll()} and {@link DAO#get(Collection)}.
-	 * Usually this is a {@link SourceRecordDataObjectLoader} that is fed with a stream of the storage's source records
-	 * and a conversion function like {@link AbstractDAO#convertSourceRecord(Object)}.
-	 * If the set of ids is empty, the loader must not filter for ids and return all available data objects
-	 * (as promised by {@link DAO#get(Collection)}).
+	 * Determines if an id is virtual (see {@link DAO#isVirtualId(Serializable)}), without accessing the storage.
 	 *
-	 * To be overwritten by the extending class.
+	 * @param id the id to check, never null
+	 * @return true if the id is virtual
+	 */
+	protected abstract boolean doIsVirtualId(ID id);
+
+	/**
+	 * Loads the data object with the given id from the storage, also if it is flagged as deleted.
 	 *
-	 * @param ids a set of ids that identify the data objects to load from the underlying storage. If empty, all data objects shall be loaded
-	 * @return a data object loader that will poll the next available data object from the data source
+	 * @param id the id of the data object, never null
+	 * @return the data object, or null if the storage has none with the id
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract DO doGet(ID id) throws Exception;
+
+	/**
+	 * Stores a data object, including its deleted flag. A data object with a virtual id gets its actual id.
+	 * The time stamps are set from the storage's clock (see {@link #updateTimestamps(DataObject, long)}).
+	 *
+	 * @param dataObject the data object to store, never null
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract void doSave(DO dataObject) throws Exception;
+
+	/**
+	 * Stores data objects like {@link #doSave(DataObject)} does.
+	 *
+	 * @param dataObjects the data objects to store, never null and without null elements
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract void doSave(Collection<DO> dataObjects) throws Exception;
+
+	/**
+	 * Deletes a stored data object which isn't flagged as deleted yet.
+	 * By default it is deleted logically: the deleted flag is set and the data object is stored ({@link #doSave(DataObject)}).
+	 * Implementations which delete physically override this method and set the flag themselves.
+	 *
+	 * @param dataObject the data object to delete, never null
+	 * @throws Exception re-throws every exception
+	 */
+	protected void doDelete(DO dataObject) throws Exception
+	{
+		dataObject.setDeleted(true);
+
+		this.doSave(dataObject);
+	}
+
+	/**
+	 * Deletes stored data objects which aren't flagged as deleted yet, like {@link #doDelete(DataObject)} does.
+	 *
+	 * @param dataObjects the data objects to delete, never null and without null elements
+	 * @throws Exception re-throws every exception
+	 */
+	protected void doDelete(Collection<DO> dataObjects) throws Exception
+	{
+		for (DO dataObject : dataObjects) dataObject.setDeleted(true);
+
+		this.doSave(dataObjects);
+	}
+
+	/**
+	 * Removes all data objects physically from the storage (see {@link DAO#clear()}).
+	 *
+	 * @throws UnsupportedOperationException thrown if the storage can't be cleared
+	 * @throws Exception re-throws every exception
+	 */
+	protected abstract void doClear() throws Exception;
+
+	/**
+	 * Creates the loader for {@link DAO#get(Collection)}: it provides the data objects with the given ids, also the ones
+	 * flagged as deleted. Usually {@link SourceRecordDataObjectLoader#forIds(DAO, Stream, java.util.function.Function, Set)}.
+	 *
+	 * @param ids the ids of the data objects to provide, never empty
+	 * @return a new, lazy data object loader
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract DataObjectLoader<?,ID,DO> doCreateLoader(Set<ID> ids) throws Exception;
 
 	/**
-	 * Returns a data object loader (a {@link java.util.Spliterator}) that will poll the next available data object from the data source
-	 * so it can be processed in calls to {@link DAO#getRecent()}, {@link DAO#getRecent(boolean)}
-	 * and {@link DAO#getModifiedSince(long, DeletedDataObjects)}.
-	 * Usually this is a {@link GenericRecentDataObjectLoader}.
-	 * The created data loader needs to be capable of filtering data objects out based on if they were flagged deleted
-	 * ({@link DataObject#isDeleted()} == true) and if they were not modified after the given modification time stamp
-	 * ({@link DataObject#getModifiedTimestamp()} &lt;= modifiedSince).
+	 * Creates the loader for {@link DAO#getAll(DeletedDataObjects)} and {@link DAO#getModifiedSince(long, DeletedDataObjects)}:
+	 * it provides the data objects modified after the given time stamp. Usually
+	 * {@link SourceRecordDataObjectLoader#forModifiedSince(DAO, Stream, java.util.function.Function, long, DeletedDataObjects)}.
 	 *
-	 * This class does not update the DAO's most recent modification time stamp itself. The loader is responsible for calling
-	 * {@link DAO#setLastModifiedTimeStamp(long)} when the loading has ended and modifiedSince equals
-	 * {@link DAO#getLastModifiedTimeStamp()} (as {@link GenericRecentDataObjectLoader} does).
-	 *
-	 * To be overwritten by the extending class.
-	 *
-	 * @param modifiedSince the modification time stamp the data objects' modification time stamps are compared to
-	 * @param deleted whether data objects flagged as deleted ({@link DataObject#isDeleted()} == true) shall also be returned
-	 * @return a data object loader that will poll the next available data object from the data source
+	 * @param modifiedSince only data objects with a greater modification time stamp are provided ({@link Long#MIN_VALUE} for all)
+	 * @param deleted whether data objects flagged as deleted are provided
+	 * @return a new, lazy data object loader
 	 * @throws Exception re-throws every exception
 	 */
 	protected abstract DataObjectLoader<?,ID,DO> doCreateLoader(long modifiedSince, DeletedDataObjects deleted) throws Exception;
 
 	/**
-	 * Updates the created and modified time stamp of a data object (DO) by calling its implementation of
-	 * {@link DataObject#updateTimestamps()}.
-	 * 
-	 * 1. always updates the modification time stamp of the DO
-	 * 2. if the DO has no created time stamp yet ({@link DataObject#getCreatedTimestamp()} is smaller than 1), it is set as well
-	 * 
-	 * Does nothing if the data object is null.
-	 * 
-	 * @param dataObj the data object to update
-	 */
-	protected synchronized void updateDataObjTimeStamps(DO dataObj)
-	{
-		if (dataObj == null) return;
-
-		dataObj.updateTimestamps();
-	}
-
-	/**
-	 * Updates the created and modified time stamp of data objects (DOs) by calling the implementation of
-	 * {@link DataObject#updateTimestamps()} (see {@link AbstractDAO#updateDataObjTimeStamps(DataObject)}).
-	 *
-	 * Does nothing if the collection is null. Elements that are null are skipped.
-	 *
-	 * @param dataObjects the data objects to update
-	 */
-	protected synchronized void updateDataObjTimeStamps(Collection<DO> dataObjects)
-	{
-		if (dataObjects == null) return;
-
-		for (DO dataObj : dataObjects) this.updateDataObjTimeStamps(dataObj);
-	}
-
-	/**
-	 * Wraps a data object loader in a sequential stream. The data objects are loaded lazily by the loader
-	 * while the stream is consumed.
-	 * The loader is registered as close handler of the stream, so {@link DataObjectLoader#close()} is only called
-	 * if the caller closes the stream.
-	 * 
-	 * @param doLoader the actual data object loader
-	 * @return a stream of the data objects provided by the loader
-	 */
-	private Stream<DO> toStream(DataObjectLoader<?, ID, DO> doLoader)
-	{
-		Stream<DO> dataObjStream = StreamSupport.stream(doLoader, false);
-				   dataObjStream.onClose(doLoader);
-
-		return dataObjStream;
-	}
-
-	/**
-	 * Calls {@link AbstractDAO#doGet(Serializable)} and returns whatever it returns, but re-throws its exceptions unchecked,
+	 * Calls {@link AbstractDAO#doGet(Serializable)} and returns its result, but re-throws its exceptions unchecked,
 	 * so the method can be used as conversion function of data object loaders (see {@link SourceRecordDataObjectLoader}).
 	 *
-	 * @param sourceRecordIdentifier any identifier that indicates the next record to load as data object from the data source
-	 * @return the data object of the source record or null if no source record was found
+	 * @param sourceRecordIdentifier the id of the data object to load
+	 * @return the data object, or null if the storage has none with the id
 	 * @throws DAORuntimeException thrown if loading the data object failed (with a {@link BrokenRecordException} as cause)
 	 */
 	@SuppressWarnings("unchecked")
@@ -352,7 +331,7 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	/**
 	 * Resolves the actual class of one of the type parameters of {@link AbstractDAO} for this instance
 	 * by walking up the class hierarchy from the instance's class to {@link AbstractDAO}.
-	 * 
+	 *
 	 * @param typeParamIndex the index of the type parameter of {@link AbstractDAO} (0 = ID, 1 = DO)
 	 * @return the actual class of the type parameter
 	 * @throws IllegalStateException thrown if the actual class cannot be obtained
@@ -385,12 +364,10 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	}
 
 	/**
-	 * Obtains the actual data class of data objects that derive from DataObject.
-	 * The class is resolved from the type argument given for DO, regardless of how many classes
-	 * are between the class of this instance and {@link AbstractDAO}.
-	 * 
-	 * @return the actual data class
-	 * @throws IllegalStateException thrown if the actual data class cannot be obtained
+	 * Obtains the class of the data objects, resolved from the type argument given for DO.
+	 *
+	 * @return the class of the data objects
+	 * @throws IllegalStateException thrown if the class cannot be obtained
 	 * @throws Exception re-throws every exception
 	 */
 	@SuppressWarnings("rawtypes")
@@ -400,12 +377,10 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	}
 
 	/**
-	 * Obtains the actual class of the data objects' identifiers.
-	 * The class is resolved from the type argument given for ID, regardless of how many classes
-	 * are between the class of this instance and {@link AbstractDAO}.
-	 * 
-	 * @return the actual class of the identifiers
-	 * @throws IllegalStateException thrown if the actual class cannot be obtained
+	 * Obtains the class of the data objects' ids, resolved from the type argument given for ID.
+	 *
+	 * @return the class of the ids
+	 * @throws IllegalStateException thrown if the class cannot be obtained
 	 * @throws Exception re-throws every exception
 	 */
 	@SuppressWarnings("rawtypes")
@@ -418,31 +393,12 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	 * {@inheritDoc}
 	 */
 	@Override
-	public long getLastModifiedTimeStamp()
-	{
-		return this.latestModificationTimeStamp;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void setLastModifiedTimeStamp(long newTS)
-	{
-		this.latestModificationTimeStamp = newTS;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public DO createDataObject() throws DAOException
 	{
 		return call(() ->
 		{
 			DO dataObj = this.doCreateDataObject();
 			   dataObj.setId(this.doCreateVirtualId());
-			   dataObj.updateTimestamps();
 
 			return dataObj;
 		});
@@ -451,8 +407,13 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	/**
 	 * {@inheritDoc}
 	 */
-	@Override 
-	public abstract boolean isVirtualId(ID id);
+	@Override
+	public final boolean isVirtualId(ID id) throws IllegalArgumentException
+	{
+		if (id == null) throw new IllegalArgumentException("id");
+
+		return this.doIsVirtualId(id);
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -478,7 +439,7 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public Collection<GetListener<ID, DO>> getOnGetListeners()
 	{
-		return new HashSet<>(this.onGetListeners);
+		return new ArrayList<>(this.onGetListeners);
 	}
 
 	/**
@@ -505,7 +466,7 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public Collection<SaveListener<ID, DO>> getOnSaveListeners()
 	{
-		return new HashSet<>(this.onSaveListeners);
+		return new ArrayList<>(this.onSaveListeners);
 	}
 
 	/**
@@ -532,57 +493,69 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public Collection<DeleteListener<ID, DO>> getOnDeleteListeners()
 	{
-		return new HashSet<>(this.onDeleteListeners);
+		return new ArrayList<>(this.onDeleteListeners);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public DO get(ID id) throws DAOException
+	public DO get(ID id) throws IllegalArgumentException, IllegalStateException, DAOException
 	{
-		return call(() ->
+		if (id == null) throw new IllegalArgumentException("id");
+
+		ID actualId = id;
+
+		for (GetListener<ID, DO> onGetListener : this.onGetListeners)
 		{
-			ID actualId = id;
+			ID requestedId = actualId;
 
-			// raise the event in the get-listeners for the requested id
-			for (GetListener<ID, DO> onGetListener : this.onGetListeners) actualId = onGetListener.onBeforeGet(actualId);
+			actualId = call(() -> onGetListener.onBeforeGet(requestedId));
 
-			DO dataObject = this.doGet(actualId);
+			if (actualId == null) throw new IllegalStateException(String.format("GetListener %s returned null as id", onGetListener));
+		}
 
-			// raise the event in the get-listeners for the loaded data object (after it was loaded)
-			for (GetListener<ID, DO> onGetListener : this.onGetListeners) dataObject = onGetListener.onAfterGet(dataObject);
+		ID idToGet = actualId;
+		DO dataObject = call(() -> this.doGet(idToGet));
 
-			return dataObject;
-		});
+		for (GetListener<ID, DO> onGetListener : this.onGetListeners)
+		{
+			if (dataObject == null) return null;
+
+			DO loadedDataObject = dataObject;
+
+			dataObject = call(() -> onGetListener.onAfterGet(loadedDataObject));
+		}
+
+		return dataObject;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Stream<DO> get(Collection<ID> ids) throws IllegalArgumentException, DAOException
+	public Stream<DO> get(Collection<ID> ids) throws IllegalArgumentException, IllegalStateException, DAOException
 	{
-		if (ids == null) throw new IllegalArgumentException("ids");
+		requireElements(ids, "ids");
 
-		ID[] idArray = this.toIdArray(ids);
+		ID[] actualIds = this.toIdArray(ids);
 
-		return call(() ->
+		for (GetListener<ID, DO> onGetListener : this.onGetListeners)
 		{
-			ID[] actualIds = idArray;
+			ID[] requestedIds = actualIds;
 
-			// raise the event in the get-listeners for the ids that are about to be retrieved
-			for (GetListener<ID, DO> onGetListener : this.onGetListeners)
-			{
-				actualIds = onGetListener.onBeforeGet(actualIds);
+			actualIds = call(() -> onGetListener.onBeforeGet(requestedIds));
 
-				if (actualIds == null) return this.getAll();
-			}
+			if (actualIds == null) throw new IllegalStateException(String.format("GetListener %s returned null as ids", onGetListener));
+		}
 
-			Set<ID> filterInIds = new HashSet<>(Arrays.asList(actualIds));
+		Set<ID> idsToGet = new HashSet<>(Arrays.asList(actualIds));
 
-			return this.streamLoaded(this.doCreateLoader(filterInIds));
-		});
+		idsToGet.remove(null);
+
+		if (idsToGet.isEmpty()) return Stream.empty();
+
+		return call(() -> this.streamLoaded(this.doCreateLoader(idsToGet)));
 	}
 
 	/**
@@ -591,7 +564,7 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public Stream<DO> getAll() throws DAOException
 	{
-		return call(() -> this.streamLoaded(this.doCreateLoader(Collections.<ID>emptySet())));
+		return this.getAll(DeletedDataObjects.EXCLUDE);
 	}
 
 	/**
@@ -600,7 +573,27 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public Stream<DO> getAll(DeletedDataObjects deleted) throws IllegalArgumentException, DAOException
 	{
-		throw new UnsupportedOperationException("getAll(DeletedDataObjects) is not implemented yet");
+		return this.getModifiedSince(Long.MIN_VALUE, deleted);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Stream<DO> getModifiedSince(long timestamp) throws DAOException
+	{
+		return this.getModifiedSince(timestamp, DeletedDataObjects.EXCLUDE);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Stream<DO> getModifiedSince(long timestamp, DeletedDataObjects deleted) throws IllegalArgumentException, DAOException
+	{
+		if (deleted == null) throw new IllegalArgumentException("deleted");
+
+		return call(() -> this.streamLoaded(this.doCreateLoader(timestamp, deleted)));
 	}
 
 	/**
@@ -618,7 +611,6 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 				if (!onSaveListener.onBeforeSave(dataObject)) return;
 			}
 
-			this.updateDataObjTimeStamps(dataObject);
 			this.doSave(dataObject);
 
 			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSave(dataObject);
@@ -631,7 +623,7 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public void save(Collection<DO> dataObjects) throws IllegalArgumentException, DAOException
 	{
-		if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
+		requireElements(dataObjects, "dataObjects");
 
 		run(() ->
 		{
@@ -640,7 +632,6 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 				if (!onSaveListener.onBeforeSave(dataObjects)) return;
 			}
 
-			this.updateDataObjTimeStamps(dataObjects);
 			this.doSave(dataObjects);
 
 			for (SaveListener<ID, DO> onSaveListener : this.onSaveListeners) onSaveListener.onAfterSave(dataObjects);
@@ -654,6 +645,17 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	public void delete(DO dataObject) throws IllegalArgumentException, DAOException
 	{
 		if (dataObject == null) throw new IllegalArgumentException("dataObject");
+
+		// already deleted: nothing happens, so change tracking doesn't report it twice
+		if (dataObject.isDeleted()) return;
+
+		// never saved: there is nothing to delete in the storage
+		if (this.isVirtualId(dataObject.getId()))
+		{
+			dataObject.setDeleted(true);
+
+			return;
+		}
 
 		run(() ->
 		{
@@ -674,18 +676,36 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	@Override
 	public void delete(Collection<DO> dataObjects) throws IllegalArgumentException, DAOException
 	{
-		if (dataObjects == null) throw new IllegalArgumentException("dataObjects");
+		requireElements(dataObjects, "dataObjects");
+
+		List<DO> dataObjectsToDelete = new ArrayList<>(dataObjects.size());
+
+		for (DO dataObject : dataObjects)
+		{
+			if (dataObject.isDeleted()) continue;
+
+			if (this.isVirtualId(dataObject.getId()))
+			{
+				dataObject.setDeleted(true);
+
+				continue;
+			}
+
+			dataObjectsToDelete.add(dataObject);
+		}
+
+		if (dataObjectsToDelete.isEmpty()) return;
 
 		run(() ->
 		{
 			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
 			{
-				if (!onDeleteListener.onBeforeDelete(dataObjects)) return;
+				if (!onDeleteListener.onBeforeDelete(dataObjectsToDelete)) return;
 			}
 
-			this.doDelete(dataObjects);
+			this.doDelete(dataObjectsToDelete);
 
-			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDelete(dataObjects);
+			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDelete(dataObjectsToDelete);
 		});
 	}
 
@@ -702,77 +722,48 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * The data objects are loaded by {@link #doGet(Serializable)}, without calling the get listeners.
 	 */
 	@Override
 	public void deleteByIds(Collection<ID> dataObjectIds) throws IllegalArgumentException, DAOException
 	{
-		if (dataObjectIds == null) throw new IllegalArgumentException("dataObjectIds");
+		requireElements(dataObjectIds, "dataObjectIds");
 
-		ID[] dataObjectIdArray = this.toIdArray(dataObjectIds);
-
-		run(() ->
+		List<DO> storedDataObjects = call(() ->
 		{
-			ID[] dataObjectIdsToDelete = dataObjectIdArray;
+			List<DO> found = new ArrayList<>(dataObjectIds.size());
 
-			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners)
+			for (ID dataObjectId : new HashSet<>(dataObjectIds))
 			{
-				dataObjectIdsToDelete = onDeleteListener.onBeforeDelete(dataObjectIdsToDelete);
+				DO dataObject = this.doGet(dataObjectId);
+
+				if (dataObject != null) found.add(dataObject);
 			}
 
-			this.doDelete(dataObjectIdsToDelete);
-
-			for (DeleteListener<ID, DO> onDeleteListener : this.onDeleteListeners) onDeleteListener.onAfterDelete(dataObjectIdsToDelete);
+			return found;
 		});
+
+		this.delete(storedDataObjects);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void clear() throws DAOException
+	public void clear() throws UnsupportedOperationException, DAOException
 	{
-		run(() ->
+		try
 		{
 			this.doClear();
-			this.latestModificationTimeStamp = Long.MIN_VALUE;
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Stream<DO> getRecent() throws DAOException
-	{
-		return this.getModifiedSince(this.latestModificationTimeStamp, DeletedDataObjects.EXCLUDE);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Stream<DO> getRecent(boolean returnDeleted) throws DAOException
-	{
-		return this.getModifiedSince(this.latestModificationTimeStamp, returnDeleted ? DeletedDataObjects.INCLUDE : DeletedDataObjects.EXCLUDE);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Stream<DO> getModifiedSince(long timestamp, DeletedDataObjects deleted) throws IllegalArgumentException, DAOException
-	{
-		if (deleted == null) throw new IllegalArgumentException("deleted");
-
-		return call(() -> this.streamLoaded(this.doCreateLoader(timestamp, deleted)));
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Stream<DO> getModifiedSince(long timestamp) throws DAOException
-	{
-		return this.getModifiedSince(timestamp, DeletedDataObjects.EXCLUDE);
+		}
+		catch (UnsupportedOperationException | DAOException e)
+		{
+			throw e;
+		}
+		catch (Exception e)
+		{
+			throw new DAOException(e);
+		}
 	}
 }

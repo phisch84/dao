@@ -33,10 +33,9 @@ public class SerializationDAOImpl extends AbstractSerializationDAO<Long, Seriali
 	/**
 	 * {@inheritDoc}
 	 */
-	@Override 
-	public boolean isVirtualId(Long id)
+	@Override
+	protected boolean doIsVirtualId(Long id)
 	{
-		if (id == null) return false;
 		if (id > 0) return false;
 
 		return true;
@@ -47,7 +46,7 @@ public class SerializationDAOImpl extends AbstractSerializationDAO<Long, Seriali
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected Long doCreateVirtualId() throws Exception 
+	protected synchronized Long doCreateVirtualId() throws Exception 
 	{
 		long virtualId = System.currentTimeMillis()*(-1);
 

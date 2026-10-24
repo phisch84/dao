@@ -59,7 +59,7 @@ public class FileSystemDAOImpl extends AbstractRawFileDAO<Long, FileSystemDO>
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected Long doCreateVirtualId() throws Exception 
+	protected synchronized Long doCreateVirtualId() throws Exception 
 	{
 		long virtualId = System.currentTimeMillis()*(-1);
 
@@ -103,10 +103,9 @@ public class FileSystemDAOImpl extends AbstractRawFileDAO<Long, FileSystemDO>
 	/**
 	 * {@inheritDoc}
 	 */
-	@Override 
-	public boolean isVirtualId(Long id)
+	@Override
+	protected boolean doIsVirtualId(Long id)
 	{
-		if (id == null) return false;
 		if (id >= 0) return false;
 
 		return true;

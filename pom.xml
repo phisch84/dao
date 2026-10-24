@@ -27,15 +27,7 @@
         <hibernate.version>5.6.15.Final</hibernate.version>
         <dbcp.version>1.4</dbcp.version>
         <hsql.version>2.7.4</hsql.version>
-        <test-utils.version>0.3.RELEASE</test-utils.version>
     </properties>
-
-    <repositories>
-        <repository>
-            <id>github</id>
-            <url>https://maven.pkg.github.com/phisch84/test-utils/</url>
-        </repository>
-    </repositories>
 
     <dependencyManagement>
         <dependencies>
@@ -97,12 +89,6 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
             <version>${spring.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.schoste.ddd.testing</groupId>
-            <artifactId>test-utils</artifactId>
-            <version>${test-utils.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

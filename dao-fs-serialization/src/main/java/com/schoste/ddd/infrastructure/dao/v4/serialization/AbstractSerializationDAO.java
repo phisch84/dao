@@ -68,8 +68,8 @@ public abstract class AbstractSerializationDAO<ID extends Serializable, DO exten
 	 * Serializes the data object into the file named after its id. An existing file is completely overwritten.
 	 * If the data object has a virtual id ({@link #isVirtualId(Serializable)}), it is replaced by the id returned by
 	 * {@link #doCreateActualId(Serializable)} before the file is written.
-	 * The data object's time stamps are expected to be up to date already (as {@link #save(DataObject)} does).
-	 * The last modification time stamp of the file is set to the data object's modification time stamp after it was serialized.
+	 * The time stamps are taken from the clock of the host whose file system stores the file, and are stored in the serialized
+	 * data object; the last modification time stamp of the file is set to the same value.
 	 *
 	 * @param dataObject the data object to save
 	 * @throws Exception re-throws every exception
@@ -78,6 +78,8 @@ public abstract class AbstractSerializationDAO<ID extends Serializable, DO exten
 	protected synchronized void doSave(DO dataObject) throws Exception
 	{
 		dataObject.setId(this.toActualId(dataObject.getId()));
+
+		updateTimestamps(dataObject, System.currentTimeMillis());
 
 		Path pathToFile = this.fileOf(dataObject.getId());
 

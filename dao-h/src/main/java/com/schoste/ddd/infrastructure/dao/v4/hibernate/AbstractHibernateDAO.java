@@ -10,17 +10,17 @@ import com.schoste.ddd.infrastructure.dao.v4.services.DeletedDataObjects;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.query.Query;
+import org.hibernate.type.DbTimestampType;
 
 import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
 import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAO;
 import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader;
-import com.schoste.ddd.infrastructure.dao.v4.services.GenericRecentDataObjectLoader;
 
 /**
- * Version 3 implementation of the DAO interface to persist data objects
- * via Hibernate.
+ * Implementation of the DAO interface which stores data objects in a database via Hibernate.
  * Data objects are loaded with HQL queries on the entity named {@link #getEntityName()}.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
@@ -95,53 +95,16 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Gets the current time of the database's clock, as used for the time stamps of saved data objects.
+	 * The time is queried by the means of the session's SQL dialect; if the dialect doesn't support it,
+	 * Hibernate falls back to the clock of the host.
+	 *
+	 * @param session the open session
+	 * @return the current time of the database in milliseconds since 1970-01-01 UTC
 	 */
-	@Override
-	protected synchronized void doDelete(DO dataObject) throws Exception
+	protected long getStorageTimestamp(Session session)
 	{
-		dataObject.setDeleted(true);
-
-		if (this.isVirtualId(dataObject.getId())) return;
-
-		this.inTransaction(session -> session.remove(dataObject));
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected void doDelete(Collection<DO> dataObjects) throws Exception
-	{
-		this.inTransaction(session ->
-		{
-			for (DO dataObject : dataObjects)
-			{
-				dataObject.setDeleted(true);
-
-				if (this.isVirtualId(dataObject.getId())) continue;
-
-				session.remove(dataObject);
-			}
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected void doDelete(ID[] dataObjectIds) throws Exception
-	{
-		this.inTransaction(session ->
-		{
-			for (ID dataObjectId : dataObjectIds)
-			{
-				Object dataObject = session.get(this.getDataObjectClass(), dataObjectId);
-
-				// ids without data object in the storage are ignored (as by the other DAO implementations)
-				if (dataObject != null) session.remove(dataObject);
-			}
-		});
+		return DbTimestampType.INSTANCE.seed((SharedSessionContractImplementor) session).getTime();
 	}
 
 	/**
@@ -160,25 +123,38 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * The time stamps of the data object are expected to be up to date already (as {@link AbstractDAO#save(DataObject)} does).
+	 * The time stamps are taken from the database's clock (see {@link #getStorageTimestamp(Session)}).
 	 */
 	@Override
 	protected synchronized void doSave(DO dataObject) throws Exception
 	{
-		this.inTransaction(session -> this.merge(session, dataObject));
+		this.inTransaction(session ->
+		{
+			updateTimestamps(dataObject, this.getStorageTimestamp(session));
+
+			this.merge(session, dataObject);
+		});
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * The time stamps of the data objects are expected to be up to date already (as {@link AbstractDAO#save(Collection)} does).
+	 * The time stamps are taken from the database's clock (see {@link #getStorageTimestamp(Session)}); all data objects of
+	 * the call get the same time stamp, since they are saved in one transaction.
 	 */
 	@Override
 	protected synchronized void doSave(Collection<DO> dataObjects) throws Exception
 	{
 		this.inTransaction(session ->
 		{
-			for (DO dataObject : dataObjects) this.merge(session, dataObject);
+			long storageTimestamp = this.getStorageTimestamp(session);
+
+			for (DO dataObject : dataObjects)
+			{
+				updateTimestamps(dataObject, storageTimestamp);
+
+				this.merge(session, dataObject);
+			}
 		});
 	}
 
@@ -250,9 +226,9 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	@Override
 	protected DataObjectLoader<?, ID, DO> doCreateLoader(Set<ID> ids) throws Exception
 	{
-		Stream<DO> dataObjects = ids.isEmpty() ? this.streamDataObjects(null) : this.streamDataObjects("e.id IN ?1", ids);
+		Stream<DO> dataObjects = this.streamDataObjects("e.id IN ?1", ids);
 
-		return new SourceRecordDataObjectLoader<>(this, dataObjects, Function.identity(), null);
+		return SourceRecordDataObjectLoader.forIds(this, dataObjects, Function.identity(), ids);
 	}
 
 	/**
@@ -265,6 +241,6 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	{
 		Stream<DO> dataObjects = this.streamDataObjects("((e.deleted = false) OR (e.deleted = ?1)) AND (e.modifiedTimestamp > ?2)", deleted == DeletedDataObjects.INCLUDE, modifiedSince);
 
-		return new GenericRecentDataObjectLoader<>(this, dataObjects, Function.identity(), modifiedSince, deleted == DeletedDataObjects.INCLUDE);
+		return SourceRecordDataObjectLoader.forModifiedSince(this, dataObjects, Function.identity(), modifiedSince, deleted);
 	}
 }

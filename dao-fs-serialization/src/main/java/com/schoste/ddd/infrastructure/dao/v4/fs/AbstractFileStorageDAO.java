@@ -3,7 +3,6 @@ package com.schoste.ddd.infrastructure.dao.v4.fs;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -13,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAO;
 import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
-import com.schoste.ddd.infrastructure.dao.v4.services.GenericRecentDataObjectLoader;
 import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader;
 import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
 import com.schoste.ddd.infrastructure.dao.v4.services.DeletedDataObjects;
@@ -225,18 +223,18 @@ abstract public class AbstractFileStorageDAO<ID extends Serializable, DO extends
 	@Override
 	protected DataObjectLoader<?, ID, DO> doCreateLoader(Set<ID> ids) throws Exception
 	{
-		return new SourceRecordDataObjectLoader<>(this, this.streamDataFiles(ids), this::convertSourceRecord, ids);
+		return SourceRecordDataObjectLoader.forIds(this, this.streamDataFiles(ids), this::convertSourceRecord, ids);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * The source records are the paths to the files of the data objects (see {@link #streamDataFiles(Set)}).
+	 * The source records are the paths to the files of all data objects (see {@link #streamDataFiles(Set)}).
 	 */
 	@Override
 	protected DataObjectLoader<?, ID, DO> doCreateLoader(long modifiedSince, DeletedDataObjects deleted) throws Exception
 	{
-		return new GenericRecentDataObjectLoader<>(this, this.streamDataFiles(null), this::convertSourceRecord, modifiedSince, deleted == DeletedDataObjects.INCLUDE);
+		return SourceRecordDataObjectLoader.forModifiedSince(this, this.streamDataFiles(null), this::convertSourceRecord, modifiedSince, deleted);
 	}
 
 	/**
@@ -246,44 +244,6 @@ abstract public class AbstractFileStorageDAO<ID extends Serializable, DO extends
 	protected void doSave(Collection<DO> fileObjects) throws Exception
 	{
 		for (DO fileObject : fileObjects) this.doSave(fileObject);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected synchronized void doDelete(DO fileObject) throws Exception 
-	{
-		if (fileObject == null) throw new IllegalArgumentException("fileObject");
-		
-		Path pathToFile = this.fileOf(fileObject.getId());
-		
-		if (Files.exists(pathToFile, LinkOption.NOFOLLOW_LINKS)) Files.delete(pathToFile);
-		
-		fileObject.setDeleted(!Files.exists(pathToFile, LinkOption.NOFOLLOW_LINKS));
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected void doDelete(Collection<DO> fileObjects) throws Exception
-	{
-		for (DO fileObject : fileObjects) this.doDelete(fileObject);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected void doDelete(ID[] fileObjectIds) throws Exception
-	{
-		for (ID fileObjectId : fileObjectIds)
-		{
-			Path pathToFile = this.fileOf(fileObjectId);
-			
-			if (Files.exists(pathToFile, LinkOption.NOFOLLOW_LINKS)) Files.delete(pathToFile);			
-		}
 	}
 
 	/**

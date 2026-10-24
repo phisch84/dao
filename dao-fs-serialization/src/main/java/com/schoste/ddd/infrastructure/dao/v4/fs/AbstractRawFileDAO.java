@@ -3,6 +3,7 @@ package com.schoste.ddd.infrastructure.dao.v4.fs;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
 
 import com.schoste.ddd.infrastructure.dao.v4.fs.AbstractFileStorageDAO;
@@ -15,6 +16,10 @@ import com.schoste.ddd.infrastructure.dao.v4.fs.FileDataObject;
  * is stored in its own file.
  *
  * When files are saved, their content is completely overwritten and never appended.
+ * The time stamps of a file object are the creation and last modification time stamps of its file.
+ *
+ * Deletes physically: deletions are not reported by change tracking. A file holds nothing but the data of its file object,
+ * so there is no place to store a deleted flag; deleting a file object deletes its file.
  *
  * Note that the maximum size of a single file is Integer.MAX_VALUE bytes.
  *
@@ -94,7 +99,33 @@ abstract public class AbstractRawFileDAO<ID extends Serializable, DO extends Fil
 		Files.write(pathToFile, fileObject.getData());
 
 		fileObject.setId(fileId);
-		
+
 		this.updateTimeStamp(fileObject, pathToFile);
+	}
+
+	/**
+	 * Deletes physically: deletes the file of the file object and sets its deleted flag.
+	 *
+	 * @param fileObject the file object to delete
+	 * @throws Exception re-throws every exception
+	 */
+	@Override
+	protected synchronized void doDelete(DO fileObject) throws Exception
+	{
+		Files.deleteIfExists(this.fileOf(fileObject.getId()));
+
+		fileObject.setDeleted(true);
+	}
+
+	/**
+	 * Deletes physically: deletes the files of the file objects and sets their deleted flags (see {@link #doDelete(FileDataObject)}).
+	 *
+	 * @param fileObjects the file objects to delete
+	 * @throws Exception re-throws every exception
+	 */
+	@Override
+	protected synchronized void doDelete(Collection<DO> fileObjects) throws Exception
+	{
+		for (DO fileObject : fileObjects) this.doDelete(fileObject);
 	}
 }

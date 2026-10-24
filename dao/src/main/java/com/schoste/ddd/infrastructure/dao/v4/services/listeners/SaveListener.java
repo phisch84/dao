@@ -2,58 +2,55 @@ package com.schoste.ddd.infrastructure.dao.v4.services.listeners;
 
 import java.io.Serializable;
 import java.util.Collection;
-import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
 
 import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
+import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
 
 /**
- * Interface to a listener which is notified before or after a data object is or was saved.
- * All the methods are invoked in the same thread which will perform the actual saving operation.
- * 
- * @param <ID> the data type of the data object's unique identifier
- * @param <DO> the data type of the data object
- * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
+ * Listener which is called before data objects are saved by a DAO ({@link DAO}) and after they were saved.
+ * It may change the data objects or cancel the saving. Register it by {@link DAO#registerOnSaveListener(SaveListener)};
+ * listeners are called in the order of their registration, in the thread which calls the DAO.
+ * All methods have default implementations which change nothing.
  *
+ * If a listener cancels the saving, the listeners registered after it aren't called, nothing is saved and no
+ * after-method is called. An exception thrown by a listener is thrown by the DAO as
+ * {@link com.schoste.ddd.infrastructure.dao.v4.exceptions.DAOException}; if it is thrown by an after-method,
+ * the data objects have already been saved.
+ *
+ * @param <ID> the class of the data objects' ids
+ * @param <DO> the class of the data objects
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 public interface SaveListener<ID extends Serializable, DO extends DataObject<ID>>
 {
 	/**
-	 * Called by the DAO before saving the dataObjectToSave.
-	 * The listener may change the object. After the method returns true,
-	 * the DAO will save the dataObjectToSave. If the method returns false, it will
-	 * not attempt save anything.
-	 * If several listeners are registered, the DAO only saves if all of them return true. As soon as one of them returns false,
-	 * the remaining listeners are not called.
+	 * Called before a data object is saved ({@link DAO#save(DataObject)}). The listener may change the data object.
 	 *
 	 * @param dataObjectToSave the data object to save
-	 * @return true if the DAO should save the object or false if it should discard it
+	 * @return true to continue, false to cancel the saving
 	 */
 	default boolean onBeforeSave(DO dataObjectToSave) { return true; }
 
 	/**
-	 * Called by the DAO before saving any of the DOs in dataObjectsToSave.
-	 * The listener may change the objects as well as the collection. After the method returns,
-	 * the DAO will save what it finds in dataObjectsToSave. If the method returns false, it will
-	 * not attempt save anything.
-	 * If several listeners are registered, the DAO only saves if all of them return true. As soon as one of them returns false,
-	 * the remaining listeners are not called.
+	 * Called before data objects are saved ({@link DAO#save(Collection)}). The listener may change the data objects
+	 * and the collection; the DAO saves what the collection contains afterwards.
 	 *
-	 * @param dataObjectsToSave a collection of data objects to save
-	 * @return true if the DAO should save the objects or false if it should discard them
+	 * @param dataObjectsToSave the data objects to save
+	 * @return true to continue, false to cancel the saving of all of them
 	 */
 	default boolean onBeforeSave(Collection<DO> dataObjectsToSave) { return true; }
 
 	/**
-	 * Called by the DAO after the DO was successfully saved.
-	 * 
-	 * @param dataObjectSaved the DO that was saved in the firing call
+	 * Called after a data object was saved by {@link DAO#save(DataObject)}.
+	 *
+	 * @param dataObjectSaved the saved data object
 	 */
 	default void onAfterSave(DO dataObjectSaved) { }
 
 	/**
-	 * Called by the DAO after the DOs were successfully saved.
-	 * 
-	 * @param dataObjectsSaved a collection of DOs that were saved in the firing call
+	 * Called after data objects were saved by {@link DAO#save(Collection)}.
+	 *
+	 * @param dataObjectsSaved the saved data objects
 	 */
 	default void onAfterSave(Collection<DO> dataObjectsSaved) { }
 }

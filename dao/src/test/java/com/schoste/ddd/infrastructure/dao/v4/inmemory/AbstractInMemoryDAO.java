@@ -1,37 +1,78 @@
 package com.schoste.ddd.infrastructure.dao.v4.inmemory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
-import com.schoste.ddd.infrastructure.dao.v4.services.DeletedDataObjects;
 
-import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
-import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAO;
-import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader;
-import com.schoste.ddd.infrastructure.dao.v4.services.GenericRecentDataObjectLoader;
 import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
+import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAO;
+import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
+import com.schoste.ddd.infrastructure.dao.v4.services.DeletedDataObjects;
+import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader;
 
 /**
- * Mocking implementation of the DAO interface.
- * This class actually doesn't access any data source, but defines the expected
- * behavior of data access objects (DAOs) of version 3.
- * 
- * Other layers can use this class to test their implementations without an actual
- * data source.
- * 
- * @author Philipp Schosteritsch
+ * DAO (Data Access Object) which keeps its data objects in memory, e.g. for tests of code which uses DAOs.
+ * It fulfills the whole contract of {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO} (it passes the DAO contract tests)
+ * and behaves like a real storage: it stores copies of the saved data objects and returns copies, so changes to a data object
+ * only reach the storage when it is saved. Its clock is the clock of the host. Data objects are deleted logically.
  *
- * @param <T> the type of the data object (DO) to access
+ * Actual ids are 1, 2, 3, ... in the order of the first saving; {@link #clear()} starts again with 1.
+ *
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
+ *
+ * @param <T> the class of the data objects
  */
 public abstract class AbstractInMemoryDAO<T extends DataObject<Long>> extends AbstractDAO<Long, T>
 {
-	protected Map<Long, T> dataObjects = new HashMap<Long, T>();
+	/**
+	 * The stored data objects (copies) by their ids, in the order of their first saving
+	 */
+	protected Map<Long, T> dataObjects = new LinkedHashMap<Long, T>();
+
+	/**
+	 * The last actual id given to a data object
+	 */
 	protected long lastDataObjectId = 0;
-	
+
+	/**
+	 * Creates a copy of a data object by serializing and deserializing it
+	 *
+	 * @param dataObject the data object to copy
+	 * @return the copy
+	 * @throws Exception re-throws every exception
+	 */
+	@SuppressWarnings("unchecked")
+	protected T copyOf(T dataObject) throws Exception
+	{
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
+		try (ObjectOutputStream out = new ObjectOutputStream(bytes))
+		{
+			out.writeObject(dataObject);
+		}
+
+		try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray())))
+		{
+			return (T) in.readObject();
+		}
+	}
+
+	/**
+	 * Gets the ids of the stored data objects. They are the source records of the data object loaders.
+	 *
+	 * @return a copy of the ids of the stored data objects
+	 */
+	public synchronized Collection<Long> getDataObjectIds()
+	{
+		return new ArrayList<Long>(this.dataObjects.keySet());
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -43,118 +84,53 @@ public abstract class AbstractInMemoryDAO<T extends DataObject<Long>> extends Ab
 	}
 
 	/**
-	 * Gets the ids of all data objects which are currently in the mocked storage.
-	 * Used by the data object loaders to determine the source records to load.
-	 *
-	 * @return a copy of the ids of all data objects in the mocked storage
-	 */
-	public synchronized Collection<Long> getDataObjectIds()
-	{
-		return new ArrayList<Long>(this.dataObjects.keySet());
-	}
-
-	/**
 	 * {@inheritDoc}
 	 *
-	 * The source records are the ids to filter for if there are any. Otherwise these are the ids of all data objects
-	 * in the mocked storage at the time the loader is created.
+	 * The source records are the requested ids.
 	 */
 	@Override
 	protected DataObjectLoader<?, Long, T> doCreateLoader(Set<Long> ids) throws Exception
 	{
-		Collection<Long> sourceIds = ids.isEmpty() ? this.getDataObjectIds() : ids;
-
-		return new SourceRecordDataObjectLoader<>(this, sourceIds.stream(), this::convertSourceRecord, ids);
+		return SourceRecordDataObjectLoader.forIds(this, new ArrayList<>(ids).stream(), this::convertSourceRecord, ids);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * The source records are the ids of all data objects in the mocked storage at the time the loader is created.
+	 * The source records are the ids of the data objects stored when the loader is created.
 	 */
 	@Override
 	protected DataObjectLoader<?, Long, T> doCreateLoader(long modifiedSince, DeletedDataObjects deleted) throws Exception
 	{
-		return new GenericRecentDataObjectLoader<>(this, this.getDataObjectIds().stream(), this::convertSourceRecord, modifiedSince, deleted == DeletedDataObjects.INCLUDE);
-	}
-
-	/**
-	 * Gets the data object with the given id from the mocked storage.
-	 *
-	 * @param id the id of the data object to get
-	 * @return the data object, or null if not found
-	 * @throws Exception re-throws every exception
-	 */
-	@Override
-	protected synchronized T doGet(Long id) throws Exception
-	{
-		if (this.dataObjects.containsKey(id)) return this.dataObjects.get(id);
-
-		return null;
-	}
-
-	/**
-	 * Gets all data objects with the given ids if they are present in this DAO
-	 * 
-	 * @param ids the ids of the data objects to get
-	 * @return a collection of data objects that existed in the DAO if their id is among the requested ids
-	 * @throws Exception re-throws every exception
-	 */
-	@SuppressWarnings("unlikely-arg-type")
-	protected Collection<T> getSomeDOs(Integer[] ids) throws Exception
-	{
-		Collection<T> dataObjects = this.dataObjects.values();
-		Collection<T> found = new ArrayList<T>(ids.length);
-		Collection<Integer> dataObjectIds = new ArrayList<Integer>(ids.length);
-
-		for (int id : ids) dataObjectIds.add(id);
-
-		for (T dataObject : dataObjects)
-		{
-			if (dataObjectIds.contains(dataObject.getId())) found.add(dataObject);
-		}
-
-		return found;
-	}
-
-	/**
-	 * Gets all data objects from the mocked storage which are not flagged as deleted and which were modified after
-	 * the DAO's last modification time stamp. The DAO's last modification time stamp is updated to the biggest
-	 * modification time stamp of the returned data objects.
-	 * This method is currently not used.
-	 * 
-	 * @return a collection of data objects
-	 * @throws Exception re-throws every exception
-	 */
-	protected Collection<T> getAllDOs() throws Exception
-	{
-		Collection<T> all = this.dataObjects.values();
-		Collection<T> undeletedAndNewOrModified = new ArrayList<T>(all.size());
-
-		for (T dataObject : all)
-		{
-			if (dataObject.isDeleted()) continue;
-			if (dataObject.getModifiedTimestamp() <= this.latestModificationTimeStamp) continue;
-			
-			undeletedAndNewOrModified.add(dataObject);
-		}
-
-		T latestModifiedObject = undeletedAndNewOrModified.stream().max(Comparator.comparing(DataObject::getModifiedTimestamp)).orElseGet(() -> null);
-
-		if (latestModifiedObject != null) this.latestModificationTimeStamp = latestModifiedObject.getModifiedTimestamp();
-
-		return undeletedAndNewOrModified;		
+		return SourceRecordDataObjectLoader.forModifiedSince(this, this.getDataObjectIds().stream(), this::convertSourceRecord, modifiedSince, deleted);
 	}
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * Returns a copy of the stored data object.
+	 */
+	@Override
+	protected synchronized T doGet(Long id) throws Exception
+	{
+		T dataObject = this.dataObjects.get(id);
+
+		return (dataObject == null) ? null : this.copyOf(dataObject);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Stores a copy of the data object.
 	 */
 	@Override
 	protected synchronized void doSave(T dataObject) throws Exception
 	{
-		if (dataObject.getId() < 1) dataObject.setId(++this.lastDataObjectId);
+		if (this.isVirtualId(dataObject.getId())) dataObject.setId(++this.lastDataObjectId);
 
-		this.dataObjects.put(dataObject.getId(), dataObject);
+		updateTimestamps(dataObject, System.currentTimeMillis());
+
+		this.dataObjects.put(dataObject.getId(), this.copyOf(dataObject));
 	}
 
 	/**
@@ -164,39 +140,5 @@ public abstract class AbstractInMemoryDAO<T extends DataObject<Long>> extends Ab
 	protected synchronized void doSave(Collection<T> dataObjects) throws Exception
 	{
 		for (T dataObject : dataObjects) this.doSave(dataObject);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected synchronized void doDelete(T dataObject) throws Exception
-	{
-		dataObject.setDeleted(true);
-
-		this.dataObjects.remove(dataObject.getId());
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected synchronized void doDelete(Collection<T> dataObjects) throws Exception
-	{
-		for (T dataObject : dataObjects) this.doDelete(dataObject);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected synchronized void doDelete(Long[] dataObjectIds) throws Exception
-	{
-		for (long dataObjectId : dataObjectIds) 
-		{
-			T dataObj = this.dataObjects.remove(dataObjectId);
-
-			if (dataObj != null) dataObj.setDeleted(true);
-		}
 	}
 }
