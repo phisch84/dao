@@ -1,0 +1,78 @@
+package com.schoste.ddd.infrastructure.dao.v4.services.listeners;
+
+import java.io.Serializable;
+import java.util.Collection;
+import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
+
+import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
+
+/**
+ * Interface to a listener which is notified before or after a data object is or was deleted.
+ * All the methods are invoked in the same thread which will perform the actual deletion operation.
+ * 
+ * @param <ID> the data type of the data object's unique identifier
+ * @param <DO> the data type of the data object
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
+ *
+ */
+public interface DeleteListener<ID extends Serializable, DO extends DataObject<ID>>
+{
+	/**
+	 * Called by the DAO before deleting the dataObjectToDelete.
+	 * The listener may change the object. After the methods return true,
+	 * the DAO will delete the dataObjectToDelete. If the method returns false, it will
+	 * not attempt delete anything.
+	 * If several listeners are registered, the DAO only deletes if all of them return true. As soon as one of them returns false,
+	 * the remaining listeners are not called.
+	 *
+	 * @param dataObjectToDelete the data object to delete
+	 * @return true if the DAO should delete the object or false if it should discard it
+	 */
+	default boolean onBeforeDelete(DO dataObjectToDelete) { return true; }
+
+	/**
+	 * Called by the DAO before deleting any of the DOs in dataObjectsToDelete.
+	 * The listener may change the objects as well as the collection. After the method returns,
+	 * the DAO will delete what it finds in dataObjectsToDelete. If the method returns false, it will
+	 * not attempt delete anything.
+	 * If several listeners are registered, the DAO only deletes if all of them return true. As soon as one of them returns false,
+	 * the remaining listeners are not called.
+	 *
+	 * @param dataObjectsToDelete a collection of data objects to delete
+	 * @return true if the DAO should delete the objects or false if it should discard them
+	 */
+	default boolean onBeforeDelete(Collection<DO> dataObjectsToDelete) { return true; }
+
+	/**
+	 * Called by the DAO before deleting any of the DOs with an id in dataObjectIdsToDelete.
+	 * The listener should return the ids which should be actually deleted. After the method returns,
+	 * the DAO will delete what was returned. The listener must not return null.
+	 * This method is called when data objects are deleted by their ids, also if only one id was given
+	 * (then with an array of one id).
+	 * 
+	 * @param dataObjectIdsToDelete an array of ids of data objects to delete
+	 * @return an array of ids of data objects to actually delete
+	 */
+	default ID[] onBeforeDelete(ID[] dataObjectIdsToDelete) { return dataObjectIdsToDelete; }
+
+	/**
+	 * Called by the DAO after the DO was successfully deleted.
+	 * 
+	 * @param dataObjectDeleted the DO that was deleted in the firing call
+	 */
+	default void onAfterDelete(DO dataObjectDeleted) { }
+
+	/**
+	 * Called by the DAO after the DOs were successfully deleted.
+	 * 
+	 * @param dataObjectsDeleted a collection of DOs that were deleted in the firing call
+	 */
+	default void onAfterDelete(Collection<DO> dataObjectsDeleted) { }
+
+	/**
+	 * Called by the DAO after the DOs were successfully deleted.
+	 * 
+	 * @param dataObjectIdsDeleted an array of DO ids that were deleted in the firing call
+	 */
+	default void onAfterDelete(ID[] dataObjectIdsDeleted) { }
+}

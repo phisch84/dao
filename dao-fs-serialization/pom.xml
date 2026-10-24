@@ -2,22 +2,22 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.schoste.ddd.infrastructure</groupId>
-        <artifactId>dao-parent</artifactId>
+        <artifactId>dao4-parent</artifactId>
         <version>4.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>dao-fs-serialization</artifactId>
-    <name>Generic Serialization and File System DAO</name>
+    <artifactId>dao4-fs-serialization</artifactId>
+    <name>DAO 4 - file system and serialization</name>
 
     <dependencies>
         <dependency>
             <groupId>com.schoste.ddd.infrastructure</groupId>
-            <artifactId>dao</artifactId>
+            <artifactId>dao4</artifactId>
         </dependency>
 
         <!-- Testing -->
         <dependency>
             <groupId>com.schoste.ddd.infrastructure</groupId>
-            <artifactId>dao</artifactId>
+            <artifactId>dao4</artifactId>
             <classifier>tests</classifier>
             <type>test-jar</type>
         </dependency>

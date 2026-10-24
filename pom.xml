@@ -1,10 +1,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.schoste.ddd.infrastructure</groupId>
-    <artifactId>dao-parent</artifactId>
+    <artifactId>dao4-parent</artifactId>
     <version>4.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Generic DAO (parent)</name>
+    <name>DAO 4 (parent)</name>
     <url>https://www.schoste.com/</url>
 
     <modules>
@@ -41,12 +41,12 @@
             <!-- Modules of this project -->
             <dependency>
                 <groupId>com.schoste.ddd.infrastructure</groupId>
-                <artifactId>dao</artifactId>
+                <artifactId>dao4</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.schoste.ddd.infrastructure</groupId>
-                <artifactId>dao</artifactId>
+                <artifactId>dao4</artifactId>
                 <version>${project.version}</version>
                 <classifier>tests</classifier>
                 <type>test-jar</type>
@@ -134,7 +134,7 @@
                     </configuration>
                 </plugin>
 
-                <!-- Every module also provides its test classes (e.g. the mocked DAO and the generic DAO tests) as test-jar -->
+                <!-- Every module also provides its test classes (e.g. the in-memory DAO and the DAO contract tests) as test-jar -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>

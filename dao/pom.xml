@@ -2,9 +2,9 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.schoste.ddd.infrastructure</groupId>
-        <artifactId>dao-parent</artifactId>
+        <artifactId>dao4-parent</artifactId>
         <version>4.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>dao</artifactId>
-    <name>Generic DAO</name>
+    <artifactId>dao4</artifactId>
+    <name>DAO 4</name>
 </project>

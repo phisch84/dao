@@ -1,0 +1,118 @@
+package com.schoste.ddd.infrastructure.dao.v4.services.listeners;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
+import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
+
+/**
+ * Mocked implementation of a delete listener for unit testing
+ * 
+ * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ */
+public class RecordingDeleteListener<T extends DataObject<Long>> implements DeleteListener<Long, T>
+{
+	protected Collection<T> dosReceivedBeforeDeleting = new ArrayList<T>();
+	protected Set<T> dosReceivedAfterDeleting = new HashSet<T>();
+	protected Collection<Long> idsReceivedBeforeDeleting = new ArrayList<>();
+	protected Set<Long> idsReceivedAfterDeleting = new HashSet<>();
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean onBeforeDelete(T dataObjectToDelete)
+	{
+		this.dosReceivedBeforeDeleting.add(dataObjectToDelete);
+
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean onBeforeDelete(Collection<T> dataObjectsToDelete)
+	{
+		for (T dataObjectToDelete : dataObjectsToDelete)
+		{
+			this.dosReceivedBeforeDeleting.add(dataObjectToDelete);
+		}
+
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Long[] onBeforeDelete(Long[] dataObjectIdsToDelete)
+	{
+		for (long dataObjectIdToDelete : dataObjectIdsToDelete) this.idsReceivedBeforeDeleting.add(dataObjectIdToDelete);
+
+		return dataObjectIdsToDelete;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void onAfterDelete(T dataObjectDeleted)
+	{
+		this.dosReceivedAfterDeleting.add(dataObjectDeleted);	
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void onAfterDelete(Collection<T> dataObjectsDeleted)
+	{
+		for (T dataObjectDeleted : dataObjectsDeleted) this.dosReceivedAfterDeleting.add(dataObjectDeleted);	
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void onAfterDelete(Long[] dataObjectIdsDeleted)
+	{
+		for (long dataObjectIdDeleted : dataObjectIdsDeleted) this.idsReceivedAfterDeleting.add(dataObjectIdDeleted);
+	}
+
+	/**
+	 * Gets the ids of all data objects received before they were submitted for deleting.
+	 * This includes the ids that were received instead of data objects.
+	 * 
+	 * @return a collection of data object ids
+	 */
+	public Collection<Long> getDOsReceivedBeforeDeleting()
+	{
+		Collection<Long> ids = new ArrayList<>();
+
+		ids.addAll(this.idsReceivedBeforeDeleting);
+
+		for (T dataObjectToDelete : this.dosReceivedBeforeDeleting) ids.add(dataObjectToDelete.getId());
+		
+		return ids;
+	}
+
+	/**
+	 * Gets the ids of all data objects received after they were deleted.
+	 * This includes the ids that were received instead of data objects.
+	 * 
+	 * @return a collection of data object ids
+	 */
+	public Collection<Long> getDOsReceivedAfterDeleting()
+	{
+		Collection<Long> ids = new ArrayList<>();
+
+		ids.addAll(this.idsReceivedAfterDeleting);
+
+		for (T dataObjectToDelete : this.dosReceivedAfterDeleting) ids.add(dataObjectToDelete.getId());
+		
+		return ids;
+	}
+}

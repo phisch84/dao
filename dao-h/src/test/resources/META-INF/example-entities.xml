@@ -8,25 +8,25 @@
     <!--
     Since all DOs are supposed to extend this class it needs to be defined as mapped-superclass
      -->
-	<mapped-superclass class="com.schoste.ddd.infrastructure.dal.v3.models.GenericDataObject" access="FIELD">
+	<mapped-superclass class="com.schoste.ddd.infrastructure.dao.v4.models.DataObject" access="FIELD">
 	    <attributes>
 	        <id name="id">
 	            <!-- no column definition required here because property and column name are the same -->
 	        	<generated-value strategy="IDENTITY"/>
 	        </id>
-	        <basic name="createdTimeStamp">
+	        <basic name="createdTimestamp">
 	        	<column name="created"/>
 	        </basic>
-	        <basic name="modifiedTimeStamp">
+	        <basic name="modifiedTimestamp">
 	        	<column name="modified"/>
 	        </basic>
-	        <basic name="isDeleted">
+	        <basic name="deleted">
 	        	<column name="deleted"/>
 	        </basic>
 	    </attributes>
 	</mapped-superclass>
 
-    <entity class="com.schoste.ddd.infrastructure.dal.v3.models.HibernateDO" name="HibernateDO">
+    <entity class="com.schoste.ddd.infrastructure.dao.v4.hibernate.HibernateDO" name="HibernateDO">
     	<table name="hibernate_do"/>
         <attributes>
             <basic name="exampleStringProperty">

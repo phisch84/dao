@@ -23,7 +23,7 @@
 
     <!-- Hibernate 7 SessionFactory Bean definitions -->
     <bean id="sessionFactory" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
-        <property name="targetClass" value="com.schoste.ddd.infrastructure.dal.v3.services.hibernate.SessionFactoryBuilder"/>
+        <property name="targetClass" value="com.schoste.ddd.infrastructure.dao.v4.hibernate.SessionFactoryBuilder"/>
         <property name="targetMethod" value="buildSessionFactory"/>
         <property name="arguments">
             <list>
