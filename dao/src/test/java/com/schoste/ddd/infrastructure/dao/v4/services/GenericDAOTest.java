@@ -18,11 +18,11 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
  * Generic test class to test implementations of the {@link DAO} interface.
  * This class provides standard test methods.
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  * @param <ID> The class of the data object's identifier
  * @param <DO> The class of the data object
- * @param <DAO> The class of the data access object
+ * @param <T> The class of the data access object
  */
 public abstract class GenericDAOTest <ID extends Serializable, DO extends DataObject<ID>, T extends DAO<ID, DO>>
 {
@@ -35,7 +35,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends DataOb
 	
 	/**
 	 * Creates a new data object used in testing.
-	 * If {@link DAO#createDataObject(Object...)} is used or not depends on the actual implementation
+	 * If {@link DAO#createDataObject()} is used or not depends on the actual implementation
 	 * 
 	 * @param parameters controls which data object is returned. It depends on the actual implementation
 	 * @return a new data object
@@ -173,10 +173,10 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends DataOb
 	}
 
 	/**
-	 * Asserts that data object newly created via {@link DAO#createDataObject(Object...)}
+	 * Asserts that data object newly created via {@link DAO#createDataObject()}
 	 * will have an identifier (see {@link DataObject#getId()}) for that:
 	 * 1. no other object was created with the same id, and
-	 * 2. {@link DAO#isVirtualId(java.io.Serializable) returns true
+	 * 2. {@link DAO#isVirtualId(java.io.Serializable)} returns true
 	 * 
 	 * @throws Exception re-throws every exception
 	 */
@@ -200,7 +200,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends DataOb
 
 	
 	/**
-	 * Asserts that the {@link DAO#get(Serializable) method of a DAO implementation
+	 * Asserts that the {@link DAO#get(Serializable)} method of a DAO implementation
 	 * returns null if a not-existing data object (was NOT saved before calling get()) is requested.
 	 * 
 	 * @throws Exception re-throws every exception
@@ -214,7 +214,7 @@ public abstract class GenericDAOTest <ID extends Serializable, DO extends DataOb
 	}
 	
 	/**
-	 * Asserts that the {@link DAO#get(Serializable) method of a DAO implementation
+	 * Asserts that the {@link DAO#get(Serializable)} method of a DAO implementation
 	 * returns a data object (DO) if it exists (was saved before calling get()), and
 	 * that the DO's time stamps have been set, and
 	 * that the DO's id isn't a virtual id anymore, and

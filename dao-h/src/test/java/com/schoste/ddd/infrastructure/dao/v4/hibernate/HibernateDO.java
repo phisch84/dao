@@ -5,7 +5,7 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 /**
  * Example Hibernate entity (data object) used in unit testing of the HibernateDAOImpl implementation
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class HibernateDO extends DataObject<Long>

@@ -10,7 +10,7 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 /**
  * Mocked implementation of a delete listener for unit testing
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 public class RecordingDeleteListener<T extends DataObject<Long>> implements DeleteListener<Long, T>
 {

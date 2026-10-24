@@ -12,7 +12,7 @@ import org.springframework.context.ApplicationContext;
 /**
  * Example file system data access object used in unit testing of the AbstractRawFileDAO implementation
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class FileSystemDAOImpl extends AbstractRawFileDAO<Long, FileSystemDO>

@@ -12,7 +12,7 @@ import org.springframework.context.ApplicationContext;
 /**
  * Example serialization data access object used in unit testing of the AbstractSerializationDAO implementation
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class SerializationDAOImpl extends AbstractSerializationDAO<Long, SerializationDO>

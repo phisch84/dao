@@ -10,7 +10,7 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 /**
  * Mocked implementation of a save listener for unit testing
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 public class RecordingSaveListener<T extends DataObject<Long>> implements SaveListener<Long, T>
 {

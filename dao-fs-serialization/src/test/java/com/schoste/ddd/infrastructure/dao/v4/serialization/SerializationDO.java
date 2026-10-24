@@ -5,7 +5,7 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 /**
  * Example data object used in unit testing of the SerializationDAOImpl implementation
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class SerializationDO extends DataObject<Long>

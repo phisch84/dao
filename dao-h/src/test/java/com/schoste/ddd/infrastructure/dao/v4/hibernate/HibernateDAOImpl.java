@@ -12,7 +12,7 @@ import com.schoste.ddd.infrastructure.dao.v4.hibernate.HibernateDAO;
 /**
  * Example Hibernate data access object used in unit testing of the AbstractHibernateDAO implementation
  *
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class HibernateDAOImpl extends AbstractHibernateDAO<Long, HibernateDO> implements HibernateDAO

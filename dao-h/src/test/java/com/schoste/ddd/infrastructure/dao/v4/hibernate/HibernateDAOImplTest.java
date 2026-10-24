@@ -25,7 +25,7 @@ import com.schoste.ddd.infrastructure.dao.v4.hibernate.HibernateDAO;
 /**
  * Test class of the HibernateDAOImpl implementation
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 @ContextConfiguration(locations = {
 		"file:src/test/resources/META-INF/module.xml",

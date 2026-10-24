@@ -14,7 +14,7 @@ import com.schoste.ddd.testing.v1.GenericObjectTest;
  * FileSystemDO instances are equal if their id and their time stamps match.
  * Data of the instances may be different.
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class FileSystemDOTest extends GenericObjectTest<FileSystemDO>

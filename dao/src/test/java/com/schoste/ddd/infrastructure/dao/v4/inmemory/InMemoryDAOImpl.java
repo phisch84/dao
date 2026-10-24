@@ -9,7 +9,7 @@ import com.schoste.ddd.infrastructure.dao.v4.inmemory.InMemoryDO;
 /**
  * Example data access object implementation used in unit testing of the {@link AbstractInMemoryDAO}
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class InMemoryDAOImpl extends AbstractInMemoryDAO<InMemoryDO>

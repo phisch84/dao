@@ -14,7 +14,7 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
  * {@link SessionFactoryBuilder#buildSessionFactory(Map, Collection)} is supposed to be called by Spring as configured in the module.xml.
  * In previous versions of Hibernate the session factory could be configured in Spring's XML. From Hibernate 5/6 on it must be done programmatically.
  *
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 public class SessionFactoryBuilder
 {

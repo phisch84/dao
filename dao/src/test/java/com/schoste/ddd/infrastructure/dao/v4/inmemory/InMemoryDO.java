@@ -6,7 +6,7 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
  * Example data object used in unit testing of the {@link InMemoryDAOImpl} implementation.
  * Uses a {@link Long} as identifier {@link DataObject#getId()}.
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public class InMemoryDO  extends DataObject<Long>

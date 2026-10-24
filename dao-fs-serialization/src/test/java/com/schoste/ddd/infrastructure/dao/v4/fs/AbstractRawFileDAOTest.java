@@ -21,10 +21,10 @@ import com.schoste.ddd.testing.v1.TestFiles;
  * Generic test class to test implementations of the AbstractRawFileDAO class.
  * This class provides standard test methods.
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  * @param <DO> The class of the data object
- * @param <DAO> The class of the data access object
+ * @param <T> The class of the data access object
  */
 abstract public class AbstractRawFileDAOTest<ID extends Serializable, DO extends FileDataObject<ID>, T extends DAO<ID, DO>> extends GenericDAOTest<ID, DO, T>
 {

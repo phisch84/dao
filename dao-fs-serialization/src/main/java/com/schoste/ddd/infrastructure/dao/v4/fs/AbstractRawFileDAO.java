@@ -45,7 +45,7 @@ abstract public class AbstractRawFileDAO<ID extends Serializable, DO extends Fil
 
 	/**
 	 * Reads the file object with the given id from the file named after the id.
-	 * The file object is created via {@link #createDataObject(Object...)} and gets the given id, the content of the file
+	 * The file object is created via {@link #createDataObject()} and gets the given id, the content of the file
 	 * as data ({@link FileDataObject#setData(byte[])}) and the creation and last modification time stamps of the file
 	 * (see {@link #updateTimeStamp(com.schoste.ddd.infrastructure.dao.v4.models.DataObject, Path)}).
 	 *

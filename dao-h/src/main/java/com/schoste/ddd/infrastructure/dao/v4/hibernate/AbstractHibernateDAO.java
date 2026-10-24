@@ -23,7 +23,7 @@ import com.schoste.ddd.infrastructure.dao.v4.services.GenericRecentDataObjectLoa
  * via Hibernate.
  * Data objects are loaded with HQL queries on the entity named {@link #getEntityName()}.
  *
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  * @param <ID> the class of the data object's identifier
  * @param <DO> the class of the data object to persist

@@ -26,7 +26,7 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
 /**
  * Test class of the FileSystemDAOImpl implementation
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 @ContextConfiguration(locations = { "file:src/test/resources/unittest-beans.xml" })
 @RunWith(SpringJUnit4ClassRunner.class)

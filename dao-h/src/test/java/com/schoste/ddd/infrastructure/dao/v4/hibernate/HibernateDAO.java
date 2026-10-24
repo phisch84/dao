@@ -6,7 +6,7 @@ import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
 /**
  * Example interface to the implementation of the DAO
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  */
 public interface HibernateDAO extends DAO<Long, HibernateDO>

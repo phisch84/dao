@@ -10,7 +10,7 @@ import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
 /**
  * Mocked implementation of a get listener for unit testing
  * 
- * @author Philipp Schosteritsch <s.philipp@schoste.com>
+ * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 public class RecordingGetListener<DO extends DataObject<Long>> implements GetListener<Long, DO>
 {
