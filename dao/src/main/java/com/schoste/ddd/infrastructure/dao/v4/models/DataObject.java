@@ -107,7 +107,30 @@ public abstract class DataObject<ID extends Serializable> implements Serializabl
 	{
 		return this.deleted;
 	}
-	
+
+	/**
+	 * Checks if another data object belongs to the same record of the storage, i.e. it has the same id.
+	 *
+	 * @param other the data object to compare with
+	 * @return true if both data objects have the same id
+	 */
+	public boolean isSameRecordAs(DataObject<ID> other)
+	{
+		throw new UnsupportedOperationException("isSameRecordAs() is not implemented yet");
+	}
+
+	/**
+	 * Checks if another data object is the same version of the same record, i.e. it has the same id and the same
+	 * modification time stamp.
+	 *
+	 * @param other the data object to compare with
+	 * @return true if both data objects have the same id and the same modification time stamp
+	 */
+	public boolean isSameVersionAs(DataObject<ID> other)
+	{
+		throw new UnsupportedOperationException("isSameVersionAs() is not implemented yet");
+	}
+
 	/**
 	 * Updates the time stamps of the instance to the current time.
 	 * The modification time stamp is always updated. The creation time stamp is only set if it is smaller than 1

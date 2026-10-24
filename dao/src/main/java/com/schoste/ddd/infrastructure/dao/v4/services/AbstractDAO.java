@@ -598,6 +598,15 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	 * {@inheritDoc}
 	 */
 	@Override
+	public Stream<DO> getAll(DeletedDataObjects deleted) throws IllegalArgumentException, DAOException
+	{
+		throw new UnsupportedOperationException("getAll(DeletedDataObjects) is not implemented yet");
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	public void save(DO dataObject) throws IllegalArgumentException, DAOException
 	{
 		if (dataObject == null) throw new IllegalArgumentException("dataObject");

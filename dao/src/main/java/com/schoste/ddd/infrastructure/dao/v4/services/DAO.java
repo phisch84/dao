@@ -104,6 +104,17 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 	public Stream<DO> getAll() throws DAOException;
 
 	/**
+	 * Loads all data objects; whether the ones flagged as deleted ({@link DataObject#isDeleted()} == true) are included
+	 * is given by the parameter.
+	 *
+	 * @param deleted whether data objects flagged as deleted are included
+	 * @return a stream of data objects
+	 * @throws IllegalArgumentException thrown if parameter deleted is null
+	 * @throws DAOException re-throws every exception as DAOException
+	 */
+	public Stream<DO> getAll(DeletedDataObjects deleted) throws IllegalArgumentException, DAOException;
+
+	/**
 	 * Loads data objects according to the internal sourcing method (defined in the implementation of the data object loader,
 	 * e.g. {@link GenericRecentDataObjectLoader}).
 	 * Only data objects which have {@link DataObject#isDeleted()} == false, and
