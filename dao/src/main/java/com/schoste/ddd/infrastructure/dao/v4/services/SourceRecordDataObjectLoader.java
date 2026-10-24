@@ -86,7 +86,7 @@ public class SourceRecordDataObjectLoader<SR, ID extends Serializable, DO extend
     }
 
     /**
-     * Creates a loader which provides the data objects modified after a given time stamp.
+     * Creates a loader which provides the data objects modified at or after a given time stamp.
      *
      * @param <SR> the class of the source records
      * @param <ID> the class of the data objects' ids
@@ -94,7 +94,7 @@ public class SourceRecordDataObjectLoader<SR, ID extends Serializable, DO extend
      * @param dataAccessObject the DAO for which the loader is created
      * @param sourceRecords the source records; they may contain more records than the ones to provide
      * @param conversionFunction converts a source record into a data object, or returns null if none exists
-     * @param modifiedSince only data objects with a greater modification time stamp are provided
+     * @param modifiedSince only data objects with a greater or equal modification time stamp are provided
      * @param deleted whether data objects flagged as deleted are provided
      * @return a new loader
      * @throws IllegalArgumentException thrown if one of the parameters is null
@@ -104,7 +104,7 @@ public class SourceRecordDataObjectLoader<SR, ID extends Serializable, DO extend
         if (deleted == null) throw new IllegalArgumentException("deleted");
 
         return new SourceRecordDataObjectLoader<>(dataAccessObject, sourceRecords, conversionFunction,
-            dataObj -> ((deleted == DeletedDataObjects.INCLUDE) || !dataObj.isDeleted()) && (dataObj.getModifiedTimestamp() > modifiedSince));
+            dataObj -> ((deleted == DeletedDataObjects.INCLUDE) || !dataObj.isDeleted()) && (dataObj.getModifiedTimestamp() >= modifiedSince));
     }
 
     /**

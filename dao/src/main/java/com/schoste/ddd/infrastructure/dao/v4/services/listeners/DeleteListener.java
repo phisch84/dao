@@ -17,7 +17,8 @@ import com.schoste.ddd.infrastructure.dao.v4.services.DAO;
  * reach the listeners (see {@link DAO#delete(DataObject)}).
  *
  * If a listener cancels the deletion, the listeners registered after it aren't called, nothing is deleted and no
- * after-method is called. An exception thrown by a listener is thrown by the DAO as
+ * after-method is called; the DAO's method returns normally, so a caller which needs to know checks the data objects
+ * afterwards (e.g. a new data object which wasn't saved still has its virtual id). An exception thrown by a listener is thrown by the DAO as
  * {@link com.schoste.ddd.infrastructure.dao.v4.exceptions.DAOException}; if it is thrown by an after-method,
  * the data objects have already been deleted.
  *

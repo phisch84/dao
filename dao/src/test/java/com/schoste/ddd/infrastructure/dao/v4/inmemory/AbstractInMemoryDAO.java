@@ -41,6 +41,14 @@ public abstract class AbstractInMemoryDAO<T extends DataObject<Long>> extends Ab
 	protected long lastDataObjectId = 0;
 
 	/**
+	 * Creates a new in-memory DAO with an empty storage. Implementations call it from their own constructors.
+	 */
+	protected AbstractInMemoryDAO()
+	{
+		super();
+	}
+
+	/**
 	 * Creates a copy of a data object by serializing and deserializing it
 	 *
 	 * @param dataObject the data object to copy

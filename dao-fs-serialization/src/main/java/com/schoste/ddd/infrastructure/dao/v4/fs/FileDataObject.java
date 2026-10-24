@@ -15,9 +15,21 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 public abstract class FileDataObject<ID extends Serializable> extends DataObject<ID>
 {
 	private static final long serialVersionUID = 5905499331175572611L;
-	
+
+	/**
+	 * The content of the file; empty by default
+	 */
 	protected byte[] data = new byte[0];
-	
+
+	/**
+	 * Creates a new file object with empty data. Usually only the DAO creates file objects
+	 * (see {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO#createDataObject()}).
+	 */
+	protected FileDataObject()
+	{
+		super();
+	}
+
 	/**
 	 * Gets the file data
 	 * 

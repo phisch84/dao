@@ -93,7 +93,10 @@ public class FileSystemDAOImpl extends AbstractRawFileDAO<Long, FileSystemDO>
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Creates the DAO for the given storage folder (see the constructor of the base class)
+	 *
+	 * @param storagePath the path to the folder where the data objects are stored
+	 * @throws Exception re-throws every exception
 	 */
 	public FileSystemDAOImpl(String storagePath) throws IllegalArgumentException, IllegalStateException, Exception 
 	{

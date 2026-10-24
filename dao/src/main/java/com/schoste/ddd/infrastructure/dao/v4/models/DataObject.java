@@ -29,13 +29,34 @@ public abstract class DataObject<ID extends Serializable> implements Serializabl
 	// version 4 data objects can't be read from storages written with version 3, since their package and fields differ
 	private static final long serialVersionUID = -2290296019886002692L;
 
+	/**
+	 * The id (see {@link #getId()})
+	 */
 	private ID id;
 
+	/**
+	 * The creation time stamp (see {@link #getCreatedTimestamp()})
+	 */
 	private long createdTimestamp=0;
 
+	/**
+	 * The modification time stamp (see {@link #getModifiedTimestamp()})
+	 */
 	private long modifiedTimestamp=0;
 
+	/**
+	 * The deleted flag (see {@link #isDeleted()})
+	 */
 	private boolean deleted=false;
+
+	/**
+	 * Creates a new data object without id, not deleted, with time stamps of 0.
+	 * Usually only the DAO creates data objects (see {@link DAO#createDataObject()}).
+	 */
+	protected DataObject()
+	{
+		super();
+	}
 
 	/**
 	 * Gets the id of the data object.
@@ -113,7 +134,7 @@ public abstract class DataObject<ID extends Serializable> implements Serializabl
 	}
 
 	/**
-	 * Gets the deleted flag
+	 * Gets the deleted flag.
 	 *
 	 * @return true if the data object is deleted
 	 */

@@ -31,6 +31,14 @@ import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoad
 public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends DataObject<ID>> extends AbstractDAO<ID, DO>
 {
 	/**
+	 * Creates a new Hibernate DAO. Implementations call it from their own constructors.
+	 */
+	protected AbstractHibernateDAO()
+	{
+		super();
+	}
+
+	/**
 	 * Gets the Hibernate session factory used to open the sessions for all storage operations of this DAO.
 	 * Each operation opens its own session and closes it once it is done (data object loaders close their session
 	 * when the stream they serve is closed).
@@ -160,7 +168,6 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 	/**
 	 * Deletes all data objects from the storage with a single HQL statement.
-	 * The DAO's most recent modification time stamp is reset by {@link AbstractDAO#clear()}.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -239,7 +246,7 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	@Override
 	protected DataObjectLoader<?, ID, DO> doCreateLoader(long modifiedSince, DeletedDataObjects deleted) throws Exception
 	{
-		Stream<DO> dataObjects = this.streamDataObjects("((e.deleted = false) OR (e.deleted = ?1)) AND (e.modifiedTimestamp > ?2)", deleted == DeletedDataObjects.INCLUDE, modifiedSince);
+		Stream<DO> dataObjects = this.streamDataObjects("((e.deleted = false) OR (e.deleted = ?1)) AND (e.modifiedTimestamp >= ?2)", deleted == DeletedDataObjects.INCLUDE, modifiedSince);
 
 		return SourceRecordDataObjectLoader.forModifiedSince(this, dataObjects, Function.identity(), modifiedSince, deleted);
 	}

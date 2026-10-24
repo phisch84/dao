@@ -27,6 +27,11 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
  * The name of a data object's file is the string value of its id ({@link DataObject#getId()}).
  * The data object loaders iterate over the files in the storage folder and load each data object via {@link #convertSourceRecord(Object)}.
  *
+ * The storage folder, including its sub folders, must contain nothing but the files of the data objects: every file is read
+ * as data object. A file whose name isn't an id ({@link #toId(String)}) or whose content can't be read is reported as broken
+ * record while a stream is consumed (a {@link DAORuntimeException} with a
+ * {@link com.schoste.ddd.infrastructure.dao.v4.exceptions.BrokenRecordException} as cause), e.g. a stray {@code notes.txt}.
+ *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
  * @param <ID> the class of the data object's unique identifier
@@ -133,7 +138,7 @@ abstract public class AbstractFileStorageDAO<ID extends Serializable, DO extends
 	 * does not exist the method will try to create it. If it fails an
 	 * exception is thrown.
 	 * To verify that the folder is writable, a test file named after the simple class name of the DAO is created
-	 * and deleted again. If a file with that name already exists in the folder, the creation fails.
+	 * and deleted again. If a file with that name already exists in the folder, the constructor throws a {@link DAOException}.
 	 *
 	 * @param storagePath the path to the folder where all data objects are stored
 	 * @throws IllegalArgumentException if the provided storage path is null or it exists but is no directory.
@@ -205,7 +210,7 @@ abstract public class AbstractFileStorageDAO<ID extends Serializable, DO extends
 	 * @param sourceRecordIdentifier the id of the data object to load, or the path to its file
 	 * @return the data object of the source record or null if no source record was found
 	 * @throws DAORuntimeException thrown if loading the data object failed (with a {@link com.schoste.ddd.infrastructure.dao.v4.exceptions.BrokenRecordException} as cause)
-	 * @throws RuntimeException re-throws every exception thrown by {@link #toId(String)}
+	 * @throws RuntimeException thrown if a file name isn't an id ({@link #toId(String)} fails); the data object loaders report it as broken record, like a data object which can't be loaded
 	 */
 	@Override
 	protected DO convertSourceRecord(Object sourceRecordIdentifier) throws DAORuntimeException

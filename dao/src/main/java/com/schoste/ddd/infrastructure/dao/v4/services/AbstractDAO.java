@@ -73,6 +73,14 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 	protected Set<DeleteListener<ID, DO>> onDeleteListeners = new CopyOnWriteArraySet<>();
 
 	/**
+	 * Creates a new DAO without listeners. Implementations call it from their own constructors.
+	 */
+	protected AbstractDAO()
+	{
+		super();
+	}
+
+	/**
 	 * An operation which may throw any exception (see {@link AbstractDAO#run(Operation)}).
 	 */
 	@FunctionalInterface
@@ -297,10 +305,10 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 
 	/**
 	 * Creates the loader for {@link DAO#getAll(DeletedDataObjects)} and {@link DAO#getModifiedSince(long, DeletedDataObjects)}:
-	 * it provides the data objects modified after the given time stamp. Usually
+	 * it provides the data objects modified at or after the given time stamp. Usually
 	 * {@link SourceRecordDataObjectLoader#forModifiedSince(DAO, Stream, java.util.function.Function, long, DeletedDataObjects)}.
 	 *
-	 * @param modifiedSince only data objects with a greater modification time stamp are provided ({@link Long#MIN_VALUE} for all)
+	 * @param modifiedSince only data objects with a greater or equal modification time stamp are provided ({@link Long#MIN_VALUE} for all)
 	 * @param deleted whether data objects flagged as deleted are provided
 	 * @return a new, lazy data object loader
 	 * @throws Exception re-throws every exception

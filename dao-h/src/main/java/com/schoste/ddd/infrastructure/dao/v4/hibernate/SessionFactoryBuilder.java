@@ -11,13 +11,21 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 
 /**
  * Static builder for the {@link SessionFactory}.
- * {@link SessionFactoryBuilder#buildSessionFactory(Map, Collection)} is supposed to be called by Spring as configured in the module.xml.
- * In previous versions of Hibernate the session factory could be configured in Spring's XML. From Hibernate 5/6 on it must be done programmatically.
+ * Call {@link SessionFactoryBuilder#buildSessionFactory(Map, Collection)} from your own code, or let a dependency injection
+ * framework call it (e.g. Spring's {@code MethodInvokingFactoryBean}), since from Hibernate 5 on a session factory can't be
+ * configured declaratively anymore.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 public class SessionFactoryBuilder
 {
+    /**
+     * Not to be instantiated; the class only has a static method.
+     */
+    private SessionFactoryBuilder()
+    {
+    }
+
     /**
      * Builds a new session factory. All given settings are applied to the service registry and all given resources
      * are added as metadata sources.

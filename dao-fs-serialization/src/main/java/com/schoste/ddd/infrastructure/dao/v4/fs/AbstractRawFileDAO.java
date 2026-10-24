@@ -36,7 +36,7 @@ abstract public class AbstractRawFileDAO<ID extends Serializable, DO extends Fil
 	 * does not exist the method will try to create it. If it fails an
 	 * exception is thrown.
 	 * To verify that the folder is writable, a test file named after the simple class name of the DAO is created
-	 * and deleted again. If a file with that name already exists in the folder, the creation fails.
+	 * and deleted again. If a file with that name already exists in the folder, the constructor throws a {@link DAOException}.
 	 *
 	 * @param storagePath the path to the folder where all data objects are stored
 	 * @throws IllegalArgumentException if the provided storage path is null or it exists but is no directory.

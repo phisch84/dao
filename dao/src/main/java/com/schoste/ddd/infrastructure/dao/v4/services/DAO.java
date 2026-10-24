@@ -23,10 +23,12 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
  * <li><b>Deleting is logical:</b> {@link #delete(DataObject)} flags a data object as deleted ({@link DataObject#isDeleted()}) and stores
  * the flag. Physical removal is up to the storage's operators. Some implementations delete physically and say so in their class
  * documentation. Therefore <b>a data object counts as deleted if it is flagged or missing</b>.</li>
- * <li><b>Change tracking is stateless:</b> {@link #getModifiedSince(long)} provides the data objects modified after a time stamp.
- * The caller keeps its own time stamp (the highest modification time stamp it has processed), so several callers can use one DAO
- * independently. The storage's clock sets the time stamps. A change can be reported more than once (e.g. after a late commit
- * of a database transaction), but never less often; callers ignore duplicates.</li>
+ * <li><b>Change tracking is stateless:</b> {@link #getModifiedSince(long)} provides the data objects modified at or after a time stamp.
+ * The caller keeps its own time stamp (the highest modification time stamp it has processed) and passes it next time, so several
+ * callers can use one DAO independently. Since several changes can get the same time stamp, the data objects with exactly the passed
+ * time stamp are provided again; the caller ignores the ones it has already processed. The storage's clock sets the time stamps.
+ * A change which a database transaction commits later than other changes may carry an older time stamp than them; callers which
+ * must see such changes pass their time stamp minus a safety margin (e.g. the longest duration of a transaction).</li>
  * <li><b>Streams must be closed:</b> methods which provide several data objects return a lazy, sequential {@link Stream}, so that large
  * amounts of data never have to fit into memory. The DAO keeps resources (e.g. files or database sessions) open until the stream is
  * closed, e.g. by a try-with-resources statement. Failures while a stream is consumed are thrown as {@link DAORuntimeException};
@@ -83,7 +85,7 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 	public DO get(ID id) throws IllegalArgumentException, IllegalStateException, DAOException;
 
 	/**
-	 * Gets the data objects with the given ids, also the ones flagged as deleted.
+	 * Gets the data objects with the given ids, also the ones flagged as deleted, in no particular order.
 	 * Ids without data object are ignored; no ids provide no data objects.
 	 * Registered {@link GetListener}s may change the requested ids ({@link GetListener#onBeforeGet(Serializable[])}) and the
 	 * loaded data objects ({@link GetListener#onAfterGet(DataObject)}).
@@ -106,7 +108,7 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 	public Stream<DO> getAll() throws DAOException;
 
 	/**
-	 * Gets all data objects of the storage.
+	 * Gets all data objects of the storage, in no particular order.
 	 *
 	 * @param deleted whether data objects flagged as deleted are included
 	 * @return a stream of the data objects (see the rules for streams in the documentation of {@link DAO})
@@ -116,23 +118,29 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 	public Stream<DO> getAll(DeletedDataObjects deleted) throws IllegalArgumentException, DAOException;
 
 	/**
-	 * Gets the data objects which were modified after the given time stamp, except the ones flagged as deleted.
+	 * Gets the data objects which were modified at or after the given time stamp, except the ones flagged as deleted.
 	 * Same as {@link #getModifiedSince(long, DeletedDataObjects)} with {@link DeletedDataObjects#EXCLUDE}.
 	 *
-	 * @param timestamp only data objects with a greater modification time stamp ({@link DataObject#getModifiedTimestamp()}) are provided
+	 * @param timestamp only data objects whose modification time stamp ({@link DataObject#getModifiedTimestamp()}) is greater than or
+	 * equal to it are provided
 	 * @return a stream of the data objects (see the rules for streams in the documentation of {@link DAO})
 	 * @throws DAOException re-throws every exception as DAOException
 	 */
 	public Stream<DO> getModifiedSince(long timestamp) throws DAOException;
 
 	/**
-	 * Gets the data objects which were modified after the given time stamp. This is the change tracking of the DAO:
-	 * a caller passes the highest modification time stamp it has processed so far, and gets the data objects modified since then.
-	 * The DAO doesn't remember anything between calls. A change can be reported more than once, but never less often.
+	 * Gets the data objects which were modified at or after the given time stamp, in no particular order. This is the change
+	 * tracking of the DAO: a caller passes the highest modification time stamp it has processed so far, and gets the data objects
+	 * modified since then, including the ones with exactly that time stamp (several changes can get the same time stamp, so a change
+	 * stored right after the processed ones isn't missed). The caller ignores data objects it has already processed.
+	 * The DAO doesn't remember anything between calls.
+	 * A change committed late by a database transaction may carry an older time stamp than changes the caller has already processed;
+	 * to see such changes, pass the time stamp minus a safety margin.
 	 * To learn about deletions, include the data objects flagged as deleted; a deletion is only reported while the flagged
 	 * data object still exists in the storage.
 	 *
-	 * @param timestamp only data objects with a greater modification time stamp ({@link DataObject#getModifiedTimestamp()}) are provided
+	 * @param timestamp only data objects whose modification time stamp ({@link DataObject#getModifiedTimestamp()}) is greater than or
+	 * equal to it are provided
 	 * @param deleted whether data objects flagged as deleted are included
 	 * @return a stream of the data objects (see the rules for streams in the documentation of {@link DAO})
 	 * @throws IllegalArgumentException thrown if parameter deleted is null
@@ -144,7 +152,8 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 	 * Stores a data object. A new data object gets its actual id. Afterwards the data object carries the time stamps
 	 * which the storage has stored ({@link DataObject#getCreatedTimestamp()}, {@link DataObject#getModifiedTimestamp()}).
 	 * The deleted flag is stored as it is, so saving a deleted data object with the flag set to false undeletes it.
-	 * A {@link SaveListener} may cancel the saving ({@link SaveListener#onBeforeSave(DataObject)}).
+	 * A {@link SaveListener} may cancel the saving ({@link SaveListener#onBeforeSave(DataObject)}); then this method returns normally,
+	 * nothing is stored, and the data object is left as it was (e.g. a new data object keeps its virtual id).
 	 *
 	 * @param dataObject the data object to save
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
@@ -154,7 +163,8 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 
 	/**
 	 * Stores data objects like {@link #save(DataObject)} does.
-	 * A {@link SaveListener} may cancel the saving of all of them ({@link SaveListener#onBeforeSave(Collection)}).
+	 * A {@link SaveListener} may cancel the saving of all of them ({@link SaveListener#onBeforeSave(Collection)}); then this method
+	 * returns normally and nothing is stored.
 	 *
 	 * @param dataObjects the data objects to save
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or contains null; then nothing is saved
@@ -164,12 +174,14 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 
 	/**
 	 * Deletes a data object logically: it is flagged as deleted ({@link DataObject#isDeleted()}) and the flag is stored, which is
-	 * a modification reported by change tracking. Implementations which delete physically say so in their class documentation.
+	 * a modification reported by change tracking; afterwards the data object carries the stored modification time stamp, like after
+	 * {@link #save(DataObject)}. Implementations which delete physically say so in their class documentation.
 	 * <ul>
 	 * <li>A data object which is already flagged as deleted is left as it is.</li>
 	 * <li>A data object which was never saved (virtual id) is only flagged; nothing is stored and no listener is called.</li>
 	 * </ul>
-	 * A {@link DeleteListener} may cancel the deletion ({@link DeleteListener#onBeforeDelete(DataObject)}).
+	 * A {@link DeleteListener} may cancel the deletion ({@link DeleteListener#onBeforeDelete(DataObject)}); then this method returns
+	 * normally, and neither the data object nor the storage is changed.
 	 *
 	 * @param dataObject the data object to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObject is null
@@ -179,7 +191,8 @@ public interface DAO<ID extends Serializable, DO extends DataObject<ID>>
 
 	/**
 	 * Deletes data objects like {@link #delete(DataObject)} does.
-	 * A {@link DeleteListener} may cancel the deletion of all of them ({@link DeleteListener#onBeforeDelete(Collection)}).
+	 * A {@link DeleteListener} may cancel the deletion of all of them ({@link DeleteListener#onBeforeDelete(Collection)}); then this
+	 * method returns normally and nothing is deleted.
 	 *
 	 * @param dataObjects the data objects to delete
 	 * @throws IllegalArgumentException thrown if parameter dataObjects is null or contains null; then nothing is deleted

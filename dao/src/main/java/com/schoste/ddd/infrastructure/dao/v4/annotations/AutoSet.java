@@ -12,7 +12,9 @@ import java.lang.annotation.Target;
  * one parameter. This one parameter will be obtained by the referred method (getter method).
  *
  * This library only defines the annotation. It is evaluated by the model converter
- * that performs the conversion, which is not part of this library.
+ * that performs the conversion, which is not part of this library (e.g. the converter of a repository in the domain layer).
+ * It is defined here because it annotates data objects, which belong to the infrastructure layer; the infrastructure layer
+ * must not depend on the layers above it.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *

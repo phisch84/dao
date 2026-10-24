@@ -30,9 +30,11 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
  * Contract tests for implementations of the {@link DAO} interface (DAO = Data Access Object).
  * An implementation is correct if it passes all of these tests.
  *
- * To test an implementation, extend this class (e.g. as a Spring test) and implement the hooks:
+ * To test an implementation, extend this class and implement the hooks. The tests are plain JUnit 4 tests; they need JUnit 4
+ * and Hamcrest, but no other framework (a subclass may still be a Spring test, if its DAO is created by Spring).
  * <ul>
- * <li>{@link #getDAO()}: the DAO under test. Its storage is cleared before and after every test (see {@link DAO#clear()}).</li>
+ * <li>{@link #getDAO()}: the DAO under test; it must return the same instance on every call.
+ * Its storage is cleared before and after every test (see {@link DAO#clear()}).</li>
  * <li>{@link #setValue(DataObject, String)} and {@link #getValue(DataObject)}: write and read some content of a data object,
  * so the tests can check that content is stored.</li>
  * <li>{@link #getNotExistingId()}: an actual id which never belongs to a data object of the storage.</li>
@@ -41,8 +43,27 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
  * <li>{@link #awaitStorageClockTick()}: only if the storage's clock isn't the clock of the test's host.</li>
  * </ul>
  *
+ * Example for the DAO {@code InMemoryCustomerDAO} of the data object {@code CustomerDO} (see the overview of the {@code dao4} artifact
+ * and the package {@code com.schoste.ddd.infrastructure.dao.v4.inmemory}):
+ * <pre>
+ * import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAOContractTest;
+ *
+ * public class InMemoryCustomerDAOContractTest extends AbstractDAOContractTest&lt;Long, CustomerDO, InMemoryCustomerDAO&gt;
+ * {
+ *     private final InMemoryCustomerDAO dao = new InMemoryCustomerDAO();
+ *
+ *     protected InMemoryCustomerDAO getDAO() { return this.dao; }
+ *     protected void setValue(CustomerDO dataObject, String value) { dataObject.setName(value); }
+ *     protected String getValue(CustomerDO dataObject) { return dataObject.getName(); }
+ *     protected Long getNotExistingId() { return Long.MAX_VALUE; }
+ * }
+ * </pre>
+ * Run it like any JUnit 4 test, e.g. by Maven Surefire or {@code java org.junit.runner.JUnitCore InMemoryCustomerDAOContractTest}.
+ *
  * Every test creates the data objects it needs; no data objects are expected to exist before a test.
- * The Javadoc of each test names the rule of the contract it checks (B1 to B11, see the documentation of {@link DAO}).
+ * The Javadoc of each test starts with the rule it checks, named as in the documentation of {@link DAO} (Ids, Deleting,
+ * Change tracking, Streams, Threads, Listeners, Arguments, and Time stamps as part of change tracking), of {@link DataObject}
+ * (Equality) and of {@link DAO#clear()} (Clearing). "Reading by ids" refers to {@link DAO#get(Collection)}.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
@@ -108,6 +129,13 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// helpers
 	// ---------------------------------------------------------------------------------------------------------------
 
+	/**
+	 * Creates a new data object (see {@link DAO#createDataObject()}) with the given value, without saving it
+	 *
+	 * @param value the value (see {@link #setValue(DataObject, String)})
+	 * @return the new data object
+	 * @throws Exception re-throws every exception
+	 */
 	protected DO newDataObject(String value) throws Exception
 	{
 		DO dataObject = this.getDAO().createDataObject();
@@ -117,6 +145,13 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		return dataObject;
 	}
 
+	/**
+	 * Creates a new data object with the given value and saves it
+	 *
+	 * @param value the value (see {@link #setValue(DataObject, String)})
+	 * @return the saved data object
+	 * @throws Exception re-throws every exception
+	 */
 	protected DO saveDataObject(String value) throws Exception
 	{
 		DO dataObject = this.newDataObject(value);
@@ -126,6 +161,13 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		return dataObject;
 	}
 
+	/**
+	 * Collects the elements of a stream into a list and closes the stream
+	 *
+	 * @param <X> the class of the elements
+	 * @param stream the stream to collect
+	 * @return the elements of the stream
+	 */
 	protected static <X> List<X> collect(Stream<X> stream)
 	{
 		try (Stream<X> closingStream = stream)
@@ -134,11 +176,23 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		}
 	}
 
+	/**
+	 * Gets the ids of data objects
+	 *
+	 * @param dataObjects the data objects
+	 * @return their ids
+	 */
 	protected Set<ID> idsOf(Collection<DO> dataObjects)
 	{
 		return dataObjects.stream().map(DataObject::getId).collect(Collectors.toSet());
 	}
 
+	/**
+	 * Creates a set of ids
+	 *
+	 * @param ids the ids
+	 * @return a set with the ids
+	 */
 	@SafeVarargs
 	protected final Set<ID> setOf(ID... ids)
 	{
@@ -183,6 +237,9 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		}
 	}
 
+	/**
+	 * Unregisters all listeners of the DAO under test
+	 */
 	protected void removeAllListeners()
 	{
 		for (GetListener<ID, DO> listener : this.getDAO().getOnGetListeners()) this.getDAO().unregisterOnGetListener(listener);
@@ -190,6 +247,11 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		for (DeleteListener<ID, DO> listener : this.getDAO().getOnDeleteListeners()) this.getDAO().unregisterOnDeleteListener(listener);
 	}
 
+	/**
+	 * Removes all listeners and clears the storage before every test
+	 *
+	 * @throws Exception re-throws every exception
+	 */
 	@Before
 	public void clearStorage() throws Exception
 	{
@@ -197,6 +259,11 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		this.getDAO().clear();
 	}
 
+	/**
+	 * Removes all listeners and clears the storage after every test
+	 *
+	 * @throws Exception re-throws every exception
+	 */
 	@After
 	public void clearStorageAfterwards() throws Exception
 	{
@@ -209,7 +276,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * B6: a new data object has a virtual id.
+	 * Ids: a new data object has a virtual id.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -224,7 +291,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B6: new data objects have different virtual ids.
+	 * Ids: new data objects have different virtual ids.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -237,7 +304,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B6: null isn't an id.
+	 * Ids: null isn't an id.
 	 */
 	@Test(expected = IllegalArgumentException.class)
 	public void isVirtualId_null_throwsIllegalArgument()
@@ -246,7 +313,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B6: saving a new data object gives it an actual id, under which it can be read.
+	 * Ids: saving a new data object gives it an actual id, under which it can be read.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -279,7 +346,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't an id.
+	 * Arguments: null isn't an id.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -308,7 +375,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B2: no ids provide no data objects (not all of them).
+	 * Reading by ids: no ids provide no data objects (not all of them).
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -321,7 +388,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted as collection.
+	 * Arguments: null isn't accepted as collection.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -332,7 +399,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted as id in a collection.
+	 * Arguments: null isn't accepted as id in a collection.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -343,7 +410,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: reading a deleted data object by its id provides it flagged as deleted, or not at all if the DAO deletes physically.
+	 * Deleting: reading a deleted data object by its id provides it flagged as deleted, or not at all if the DAO deletes physically.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -358,7 +425,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: reading deleted data objects by their ids provides them flagged as deleted, or not at all if the DAO deletes physically.
+	 * Deleting: reading deleted data objects by their ids provides them flagged as deleted, or not at all if the DAO deletes physically.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -404,7 +471,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: deleted data objects are left out.
+	 * Deleting: deleted data objects are left out.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -420,7 +487,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: deleted data objects are included if asked for, unless the DAO deletes physically.
+	 * Deleting: deleted data objects are included if asked for, unless the DAO deletes physically.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -470,7 +537,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted.
+	 * Arguments: null isn't accepted.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -481,7 +548,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted as collection.
+	 * Arguments: null isn't accepted as collection.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -492,7 +559,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted as element; nothing is saved.
+	 * Arguments: null isn't accepted as element; nothing is saved.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -512,7 +579,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: saving a deleted data object with the deleted flag set to false undeletes it.
+	 * Deleting: saving a deleted data object with the deleted flag set to false undeletes it.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -538,7 +605,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * B1: deleting flags the data object; it can still be read by its id, unless the DAO deletes physically.
+	 * Deleting: deleting flags the data object; it can still be read by its id, unless the DAO deletes physically.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -555,7 +622,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1, B4: a logical deletion is a modification, so change tracking reports it (if deleted data objects are included).
+	 * Deleting, change tracking: a logical deletion is a modification, so change tracking reports it (if deleted data objects are included).
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -577,7 +644,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: deleting a deleted data object again does nothing; its modification time stamp stays the same.
+	 * Deleting: deleting a deleted data object again does nothing; its modification time stamp stays the same.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -599,7 +666,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: deleting a data object which was never saved only sets its flag; nothing is stored.
+	 * Deleting: deleting a data object which was never saved only sets its flag; nothing is stored.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -615,7 +682,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1, B7: deleting by id deletes like deleting the data object.
+	 * Deleting, listeners: deleting by id deletes like deleting the data object.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -630,7 +697,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B1: ids without data object are ignored when deleting by ids.
+	 * Deleting: ids without data object are ignored when deleting by ids.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -645,7 +712,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted.
+	 * Arguments: null isn't accepted.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -656,7 +723,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted as id.
+	 * Arguments: null isn't accepted as id.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -667,7 +734,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B10: null isn't accepted as id in a collection; nothing is deleted.
+	 * Arguments: null isn't accepted as id in a collection; nothing is deleted.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -693,25 +760,48 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * B4: only data objects modified after the given time stamp are provided.
+	 * Change tracking: the data objects modified at or after the given time stamp are provided, the earlier ones aren't.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
 	@Test
-	public void getModifiedSince_timestamp_providesOnlyLaterModifications() throws Exception
+	public void getModifiedSince_timestamp_providesModificationsAtOrAfterIt() throws Exception
 	{
 		DO before = this.saveDataObject("before");
-		long timestamp = before.getModifiedTimestamp();
 
 		this.awaitStorageClockTick();
 
 		DO after = this.saveDataObject("after");
 
-		Assert.assertEquals(this.setOf(after.getId()), this.idsOf(collect(this.getDAO().getModifiedSince(timestamp))));
+		Assert.assertEquals(this.setOf(before.getId(), after.getId()), this.idsOf(collect(this.getDAO().getModifiedSince(before.getModifiedTimestamp()))));
+		Assert.assertEquals(this.setOf(after.getId()), this.idsOf(collect(this.getDAO().getModifiedSince(after.getModifiedTimestamp()))));
 	}
 
 	/**
-	 * B1, B4: deleted data objects are left out unless asked for (and unless the DAO deletes physically).
+	 * Change tracking: a caller which passes the highest modification time stamp it has processed never misses a change,
+	 * even if the change was stored in the same millisecond (it gets the processed data object again and ignores it).
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void getModifiedSince_highestProcessedTimestamp_neverMissesImmediateChange() throws Exception
+	{
+		for (int round=0; round<20; round++)
+		{
+			DO processed = this.saveDataObject("processed " + round);
+			long processedUntil = processed.getModifiedTimestamp();
+
+			// no waiting: the next change may get the same time stamp
+			DO changed = this.saveDataObject("changed " + round);
+
+			Set<ID> reported = this.idsOf(collect(this.getDAO().getModifiedSince(processedUntil)));
+
+			Assert.assertTrue("round " + round + ": the change stored right after the processed data object was missed", reported.contains(changed.getId()));
+		}
+	}
+
+	/**
+	 * Deleting, change tracking: deleted data objects are left out unless asked for (and unless the DAO deletes physically).
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -732,7 +822,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B4: change tracking is stateless; consuming a result doesn't change the next result for the same time stamp.
+	 * Change tracking: change tracking is stateless; consuming a result doesn't change the next result for the same time stamp.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -761,7 +851,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B5: after saving, the data object carries the time stamp which the storage has stored.
+	 * Time stamps: after saving, the data object carries the time stamp which the storage has stored.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -774,7 +864,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B5: a later modification gets a greater modification time stamp.
+	 * Time stamps: a later modification gets a greater modification time stamp.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -796,7 +886,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * B9: returned streams are sequential.
+	 * Streams: returned streams are sequential.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -810,7 +900,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B9: closing a stream which was only partially consumed releases it; the DAO keeps working.
+	 * Streams: closing a stream which was only partially consumed releases it; the DAO keeps working.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -844,6 +934,13 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 		private final List<String> calls;
 		private final boolean allowSaving;
 
+		/**
+		 * Creates the listener
+		 *
+		 * @param name the name of the listener, used in the recorded calls
+		 * @param calls the list in which the calls are recorded
+		 * @param allowSaving the result of {@link #onBeforeSave(DataObject)}
+		 */
 		protected NamedSaveListener(String name, List<String> calls, boolean allowSaving)
 		{
 			this.name = name;
@@ -867,7 +964,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B7: listeners are called in the order of their registration.
+	 * Listeners: listeners are called in the order of their registration.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -887,7 +984,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B7: a listener which cancels stops the listeners registered after it; nothing is saved and no onAfter... is called.
+	 * Listeners: a listener which cancels stops the listeners registered after it; nothing is saved and no onAfter... is called.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -907,7 +1004,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B7: an exception from an onAfter... listener is thrown, although the data object has been saved.
+	 * Listeners: an exception from an onAfter... listener is thrown, although the data object has been saved.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -935,7 +1032,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B7: deleting by id calls the same delete listener methods as deleting the data object.
+	 * Listeners: deleting by id calls the same delete listener methods as deleting the data object.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -960,7 +1057,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B7: onAfterGet is only called for data objects which were found, never with null.
+	 * Listeners: onAfterGet is only called for data objects which were found, never with null.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -981,7 +1078,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B3: a get listener must not return null as ids.
+	 * Listeners: a get listener must not return null as ids.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -1000,7 +1097,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B2, B3: a get listener which returns no ids makes the DAO provide nothing.
+	 * Reading by ids, listeners: a get listener which returns no ids makes the DAO provide nothing.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -1019,7 +1116,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B7: getAll() doesn't call the id-based onBeforeGet.
+	 * Listeners: getAll() doesn't call the id-based onBeforeGet.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -1045,7 +1142,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * B11: data objects are only equal to themselves; records and versions are compared explicitly.
+	 * Equality: data objects are only equal to themselves; records and versions are compared explicitly.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -1070,7 +1167,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B11: a data object stays findable in a hash set when saving changes its id.
+	 * Equality: a data object stays findable in a hash set when saving changes its id.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -1091,7 +1188,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/**
-	 * B12: clear() removes all data objects physically, including the deleted ones.
+	 * Clearing: clear() removes all data objects physically, including the deleted ones.
 	 *
 	 * @throws Exception re-throws every exception
 	 */
@@ -1109,7 +1206,7 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 	}
 
 	/**
-	 * B8: a DAO instance can be used by several threads at the same time.
+	 * Threads: a DAO instance can be used by several threads at the same time.
 	 *
 	 * @throws Exception re-throws every exception
 	 */

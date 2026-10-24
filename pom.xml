@@ -160,7 +160,9 @@
             Consumers of the library have no access to its source code, so the Javadoc is the documentation of its contract.
             Every module publishes a Javadoc jar for its classes and one for its test classes
             (the in-memory DAO and the DAO contract tests are meant to be used by consumers and implementers).
-            doclint checks the Javadoc for errors (broken HTML, broken references) and for missing documentation.
+            doclint checks the Javadoc, and every finding fails the build:
+            for the classes, broken HTML, broken references and missing documentation;
+            for the test classes, everything except missing documentation (JUnit test classes need no comment for every element).
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -168,16 +170,27 @@
                 <version>${maven-javadoc-plugin.version}</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>
-                    <doclint>all</doclint>
                     <quiet>true</quiet>
+                    <failOnWarnings>true</failOnWarnings>
                 </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
                         <goals>
                             <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <doclint>all</doclint>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>attach-test-javadocs</id>
+                        <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <doclint>all,-missing</doclint>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
