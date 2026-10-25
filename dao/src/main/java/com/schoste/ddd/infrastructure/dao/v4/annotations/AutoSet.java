@@ -7,45 +7,69 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Defines the method which should be used to get the value which should be set
- * during model conversion. The annotated method (setter method) must accept only
- * one parameter. This one parameter will be obtained by the referred method (getter method).
+ * Marks a setter of a data object which a model converter calls with the value of a getter of the source object, e.g. when
+ * a repository converts an entity into its data object.
  *
- * This library only defines the annotation. It is evaluated by the model converter
- * that performs the conversion, which is not part of this library (e.g. the converter of a repository in the domain layer).
- * It is defined here because it annotates data objects, which belong to the infrastructure layer; the infrastructure layer
- * must not depend on the layers above it.
+ * This library only defines the annotation; it is evaluated by the converter which performs the conversion, which is not part
+ * of this library. It is defined here because it annotates data objects, which belong to the infrastructure layer; the
+ * infrastructure layer must not depend on the layers above it. Classes of the domain layer and above (e.g. entities) use
+ * {@code com.schoste.ddd.domain.v3.annotations.AutoSet} of the {@code domain-repository3} library instead, which has the
+ * same attributes.
+ *
+ * The converter of {@code domain-repository3} ({@code com.schoste.ddd.domain.v3.services.standard.AutoObjectConverterImpl})
+ * evaluates both annotations the same way. The setter must be public and take exactly one parameter; it gets the value
+ * returned by a public getter without parameters:
+ * <ul>
+ * <li>the getter's name is {@link AutoSet#methodName()}, or, if that isn't defined, the setter's name with "set" replaced
+ * by "get" (e.g. {@code getName()} for {@code setName(String)}; a setter whose name doesn't start with "set" uses its own
+ * name). Getters starting with "is" aren't found automatically; name them by {@link AutoSet#methodName()};</li>
+ * <li>the getter is called on the source object (e.g. the entity), unless {@link AutoSet#clazz()} or
+ * {@link AutoSet#className()} names another class: then it is called on an instance of that class
+ * (e.g. a class which provides a default value).</li>
+ * </ul>
+ * If the getter doesn't exist, the conversion fails. Setters which aren't annotated aren't called by the converter.
+ *
+ * Example: the repository sets the data object's name and email address from the entity's {@code getName()} and
+ * {@code getEmail()}.
+ * <pre>
+ * public class CustomerDO extends DataObject&lt;Long&gt;
+ * {
+ *     &#64;AutoSet
+ *     public void setName(String name) { ... }
+ *
+ *     &#64;AutoSet(methodName = "getEmail")
+ *     public void setEmailAddress(String emailAddress) { ... }
+ * }
+ * </pre>
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
- *
  */
 @Retention(RUNTIME)
 @Target(METHOD)
 public @interface AutoSet
 {
 	/**
-	 * Defines the class which defines the method to use to get the value.
-	 * If this value is not defined (it is {@link Object} by default), the converter will try to find a class named {@link AutoSet#className()}.
-	 * If neither {@link AutoSet#clazz()} nor {@link AutoSet#className()} are defined,
-	 * the converter will search the conversion methods in the instance of the source model.
+	 * Defines the class on whose instance the getter is called, instead of the source object.
+	 * The instance is created by the converter (the converter of {@code domain-repository3} creates it once per converter and
+	 * pair of source and destination class, and reuses it for all their conversions).
 	 *
-	 * @return a class, or {@link Object} if not defined
+	 * @return the class, or {@link Object} if not defined
 	 */
 	Class<?> clazz() default Object.class;
 
 	/**
-	 * Defines the name of the class which defines the method to use to get the value.
-	 * If {@link AutoSet#clazz()} is defined (i.e. it is not {@link Object}), this property is ignored.
+	 * Defines the full name (with package) of the class on whose instance the getter is called, instead of the source object.
+	 * The instance is created like the one of {@link AutoSet#clazz()}.
+	 * Ignored if {@link AutoSet#clazz()} is defined.
 	 *
-	 * @return a full class name (with package name), or an empty string if not defined
+	 * @return the full class name, or an empty string if not defined
 	 */
 	String className() default "";
 
 	/**
-	 * Defines the name of the method to use to get the value (getter method).
-	 * If this property is not defined, the converter will try to guess the conversion method itself.
+	 * Defines the name of the getter. If it isn't defined, the getter's name is the setter's name with "set" replaced by "get".
 	 *
-	 * @return a method name, or an empty string if not defined
+	 * @return the getter's name, or an empty string if not defined
 	 */
 	String methodName() default "";
 }
