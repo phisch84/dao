@@ -1,8 +1,11 @@
 /**
  * A DAO (Data Access Object) which stores data objects in a database via Hibernate 5.6:
  * {@link com.schoste.ddd.infrastructure.dao.v4.hibernate.AbstractHibernateDAO}.
- * Data objects are deleted logically (the deleted flag is a column); time stamps come from the database's clock.
+ * Data objects are deleted logically (the deleted flag is a column); time stamps come from the database's clock, with its
+ * precision and time zone (override {@code getStorageTimestamp(Session)} for another clock).
  * Every operation runs in its own session and transaction; a returned stream keeps its session open until the stream is closed.
+ * This library brings Hibernate (hibernate-core) only: the JDBC driver, a connection pool and Spring ORM, if used, are
+ * declared by the application. Own SQL dialects have to fit Hibernate 5.6.
  *
  * Example of a DAO for the data object {@code CustomerDO} (see the overview of the {@code dao4} artifact), created without
  * a framework:

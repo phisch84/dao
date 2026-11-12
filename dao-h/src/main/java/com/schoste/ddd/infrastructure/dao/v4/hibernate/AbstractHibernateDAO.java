@@ -105,7 +105,13 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	/**
 	 * Gets the current time of the database's clock, as used for the time stamps of saved data objects.
 	 * The time is queried by the means of the session's SQL dialect; if the dialect doesn't support it,
-	 * Hibernate falls back to the clock of the host.
+	 * Hibernate falls back to the clock of the host. Precision and time zone are therefore the database's
+	 * (e.g. SQLite's {@code current_timestamp} has whole seconds only).
+	 * <p>
+	 * This is a hook: a DAO which needs another clock overrides it, e.g. to return {@link System#currentTimeMillis()}
+	 * when the application is the only writer of the database and needs time stamps with milliseconds. The returned
+	 * time is set as modification time stamp (and as creation time stamp of new data objects) of all data objects
+	 * saved in the session's transaction.
 	 *
 	 * @param session the open session
 	 * @return the current time of the database in milliseconds since 1970-01-01 UTC

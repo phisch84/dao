@@ -47,6 +47,27 @@
  * DAO&lt;Long, CustomerDO&gt; dao = new CustomerDAO("/var/data/customers");
  * </pre>
  *
+ * With {@code Integer} ids the time-based actual ids above would overflow; take the first free number instead (the same
+ * applies to the virtual ids, which are counted down from 0):
+ * <pre>
+ * private int lastVirtualId = 0;
+ *
+ * protected synchronized Integer doCreateVirtualId() { return --this.lastVirtualId; }
+ * protected boolean doIsVirtualId(Integer id) { return id &lt;= 0; }
+ *
+ * protected Integer toId(String fileName) { return Integer.valueOf(fileName); }
+ *
+ * // searches from 1 on, so ids of deleted (removed) files may be reused
+ * protected synchronized Integer doCreateActualId(Integer virtualId)
+ * {
+ *     int id = 1;
+ *
+ *     while (Files.exists(this.fileOf(id))) id++;
+ *
+ *     return id;
+ * }
+ * </pre>
+ *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 package com.schoste.ddd.infrastructure.dao.v4.serialization;

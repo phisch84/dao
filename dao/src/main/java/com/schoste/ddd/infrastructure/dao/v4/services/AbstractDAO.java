@@ -373,9 +373,14 @@ public abstract class AbstractDAO <ID extends Serializable, DO extends DataObjec
 
 	/**
 	 * Obtains the class of the data objects, resolved from the type argument given for DO.
+	 * The type argument is followed through the whole class hierarchy of the DAO, so it may be bound by any class between
+	 * the DAO's class and {@link AbstractDAO}: an intermediate generic base class (e.g.
+	 * {@code class MyDatabaseDAO<DO extends DataObject<Long>> extends AbstractHibernateDAO<Long, DO>}) is fine, as long as the
+	 * DAO's class binds it to a concrete class. Override this method if the class can't be resolved that way.
 	 *
 	 * @return the class of the data objects
-	 * @throws IllegalStateException thrown if the class cannot be obtained
+	 * @throws IllegalStateException thrown if the class cannot be obtained, i.e. no class of the hierarchy binds the type
+	 * argument to a concrete class
 	 * @throws Exception re-throws every exception
 	 */
 	@SuppressWarnings("rawtypes")
