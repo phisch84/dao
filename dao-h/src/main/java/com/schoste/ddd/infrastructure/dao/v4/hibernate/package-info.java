@@ -4,6 +4,9 @@
  * Data objects are deleted logically (the deleted flag is a column); time stamps come from the database's clock, with its
  * precision and time zone (override {@code getStorageTimestamp(Session)} for another clock).
  * Every operation runs in its own session and transaction; a returned stream keeps its session open until the stream is closed.
+ * To store the changes of several operations, also of several DAOs of the same session factory, all together or not at all, run them
+ * in a transaction of a {@link com.schoste.ddd.infrastructure.dao.v4.hibernate.HibernateDAOTransactionManager}: then they all use
+ * its session.
  * This library brings Hibernate (hibernate-core) only: the JDBC driver, a connection pool and Spring ORM, if used, are
  * declared by the application. Own SQL dialects have to fit Hibernate 5.6.
  *

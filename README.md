@@ -112,6 +112,35 @@ try (Stream<CustomerDO> changed = dao.getModifiedSince(lastSeen, DeletedDataObje
 }
 ```
 
+## Transactions
+
+Every call of a DAO which changes the storage is atomic on its own, but several calls aren't. To store the changes of several
+calls, also of several DAOs, all together or not at all, run them in a transaction of a `DAOTransactionManager`:
+
+```java
+DAOTransactionManager transactionManager = new HibernateDAOTransactionManager(sessionFactory);
+
+try (DAOTransaction transaction = transactionManager.begin())
+{
+    customerDAO.save(customer);   // gets its actual id now, so order can refer to it
+    order.setCustomerId(customer.getId());
+    orderDAO.save(order);
+
+    transaction.commit();         // without commit, closing the transaction rolls it back
+}
+```
+
+- A transaction belongs to the thread which began it, and spans the DAOs of one storage (for Hibernate: of one session factory).
+- Reads in a transaction see its changes.
+- `begin()` on a thread which has a transaction already joins it (an *inner* transaction). Only the outermost transaction
+  commits; rolling back an inner one marks the whole transaction for rollback. So a method can use a transaction regardless
+  of whether its caller has one.
+- A failed DAO call in a transaction marks it for rollback; committing it then rolls back and throws a `DAOException`.
+- Without a transaction, DAOs behave as before.
+
+Transactions are available for the Hibernate DAOs (`HibernateDAOTransactionManager`). The file system and serialization DAOs
+don't support them.
+
 ## Using a ready-made storage
 
 The storage artifacts contain abstract DAOs; a few lines turn them into a DAO for your data objects. The Javadoc of their
@@ -135,6 +164,12 @@ Extend `AbstractDAO<ID, DO>` and implement its protected methods starting with `
 Everything else (listeners, logical deletion, argument checks, exception wrapping) is done by the base class. The Javadoc of
 `AbstractDAO` describes what each method must guarantee. To check an implementation, extend `AbstractDAOContractTest` from the
 `tests` artifact: an implementation is correct if it passes all of its tests.
+
+To support transactions, extend `AbstractDAOTransactionManager<R>`, where `R` is the storage's resource which carries a
+transaction (e.g. a database session), and implement its methods `doBegin`, `doCommit`, `doRollback` and `doRelease`. The base
+class does the binding to the thread, the nesting and the marks for rollback. The DAOs join a transaction by
+`AbstractDAOTransactionManager.getBoundResource(resourceKey, R.class)` and mark it for rollback when a call fails
+(`setRollbackOnly(resourceKey)`); `AbstractHibernateDAO` shows how.
 
 ## Migrating from DAO 2.x and 3.x
 
