@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-parent</artifactId>
-    <version>4.0.0-SNAPSHOT</version>
+    <version>4.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>DAO 4 (parent)</name>
     <url>https://www.schoste.com/</url>
@@ -21,6 +21,7 @@
         <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
+        <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
         <junit.version>4.13.2</junit.version>
         <!-- latest Spring version compatible with Java 8 -->
         <spring.version>5.3.39</spring.version>
@@ -119,6 +120,13 @@
                             <arg>-Xlint:-options</arg>
                         </compilerArgs>
                     </configuration>
+                </plugin>
+
+                <!-- Adds further source folders, e.g. the sources which the Hibernate modules share -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${build-helper-maven-plugin.version}</version>
                 </plugin>
 
                 <!-- Every module also provides its test classes (e.g. the in-memory DAO and the DAO contract tests) as test-jar -->

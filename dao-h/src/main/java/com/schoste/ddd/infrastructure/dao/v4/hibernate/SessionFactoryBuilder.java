@@ -13,8 +13,9 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
  * Static builder for the {@link SessionFactory}.
  * Call {@link SessionFactoryBuilder#buildSessionFactory(Map, Collection)} from your own code, or let a dependency injection
  * framework call it (e.g. Spring's {@code MethodInvokingFactoryBean}). It is one way of creating the session factory a DAO
- * needs, without any framework; with Spring, {@code org.springframework.orm.hibernate5.LocalSessionFactoryBean} (from
- * {@code spring-orm}, which this library doesn't bring along) is an alternative.
+ * needs, without any framework; with Spring, the {@code LocalSessionFactoryBean} of {@code spring-orm} (which this library doesn't
+ * bring along) is an alternative: {@code org.springframework.orm.hibernate5.LocalSessionFactoryBean} up to Spring 6,
+ * {@code org.springframework.orm.jpa.hibernate.LocalSessionFactoryBean} as of Spring 7.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */

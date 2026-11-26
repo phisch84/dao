@@ -13,10 +13,10 @@ import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAOContractTest;
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 @ContextConfiguration(locations = {
-		"file:src/test/resources/META-INF/module.xml",
-		"file:src/test/resources/META-INF/beans.xml",
-		"file:src/test/resources/db-setup.xml",
-		"file:src/test/resources/HibernateDAOImplTest.xml",
+		"classpath:META-INF/module.xml",
+		"classpath:META-INF/beans.xml",
+		"classpath:db-setup.xml",
+		"classpath:HibernateDAOImplTest.xml",
 		})
 @RunWith(SpringJUnit4ClassRunner.class)
 public class HibernateDAOContractTest extends AbstractDAOContractTest<Long, HibernateDO, HibernateDAO>
