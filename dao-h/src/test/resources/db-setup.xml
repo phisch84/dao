@@ -1,0 +1,19 @@
+<beans 
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+    http://www.springframework.org/schema/jdbc
+    http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
+
+    <!--
+    Define a database script which will be executed on start
+    The attribute data-source refers to the bean id of the data source class
+    (e.g. org.apache.commons.dbcp.BasicDataSource, see orm.xml)
+    -->
+    <jdbc:initialize-database data-source="hsqlTestDataSource" enabled="true">
+        <jdbc:script location="classpath:hsql-structure.sql" />
+    </jdbc:initialize-database>
+</beans>

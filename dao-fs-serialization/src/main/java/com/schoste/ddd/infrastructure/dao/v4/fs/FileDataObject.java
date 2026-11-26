@@ -1,0 +1,52 @@
+package com.schoste.ddd.infrastructure.dao.v4.fs;
+
+import java.io.Serializable;
+import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
+
+/**
+ * Implementation of the basic file object from which other file object classes should derive.
+ * File objects usually model data which are stored in files (e.g. images, binary data, etc.).
+ * They are used when binary data of data objects are not stored as BLOBs but in files on a file system.
+ * 
+ * @author Philipp Schosteritsch
+ *
+ * @param <ID> the class of the file object's unique identifier
+ */
+public abstract class FileDataObject<ID extends Serializable> extends DataObject<ID>
+{
+	private static final long serialVersionUID = 5905499331175572611L;
+
+	/**
+	 * The content of the file; empty by default
+	 */
+	protected byte[] data = new byte[0];
+
+	/**
+	 * Creates a new file object with empty data. Usually only the DAO creates file objects
+	 * (see {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO#createDataObject()}).
+	 */
+	protected FileDataObject()
+	{
+		super();
+	}
+
+	/**
+	 * Gets the file data
+	 * 
+	 * @return the data of the file
+	 */
+	public byte[] getData()
+	{
+		return this.data;
+	}
+	
+	/**
+	 * Sets the file data to be written to storage
+	 * 
+	 * @param data the file data to be written to storage
+	 */
+	public void setData(byte[] data)
+	{
+		this.data = data;
+	}
+}

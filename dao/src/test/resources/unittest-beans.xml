@@ -1,0 +1,11 @@
+<beans 
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <bean id="InMemoryDO" class="com.schoste.ddd.infrastructure.dao.v4.inmemory.InMemoryDO" scope="prototype" />
+    <bean id="InMemoryDAO" class="com.schoste.ddd.infrastructure.dao.v4.inmemory.InMemoryDAOImpl" scope="singleton" />
+</beans>

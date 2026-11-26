@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>DAO 4</title></head>
+<body>
+<p>DAO 4: data access objects (DAOs) which load, save, delete and track changes of data objects (DOs) in a storage,
+behind one interface, {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO}.</p>
+
+<p>This artifact ({@code dao4}) contains the interface and everything common to all storages. The storages come in their own
+artifacts: {@code dao4-fs-serialization} (files and serialized files) and {@code dao4-hibernate} (databases). The test jar
+({@code dao4}, classifier {@code tests}) contains an in-memory DAO for tests and the contract tests for DAO implementations.</p>
+
+<h1>Where to start</h1>
+<ul>
+<li><b>Using a DAO:</b> {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO}. Its class documentation lists the rules which
+hold for every DAO: ids, logical deletion ("deleted = flagged or missing"), stateless change tracking, streams which must be
+closed, thread safety, listeners and arguments.</li>
+<li><b>Writing data objects:</b> {@link com.schoste.ddd.infrastructure.dao.v4.models.DataObject}.</li>
+<li><b>Implementing a DAO for another storage:</b> {@link com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAO}. It does
+everything which is the same for every storage; an implementation only implements the methods whose names start with
+{@code do}. To check an implementation, extend {@code AbstractDAOContractTest} from the test jar.</li>
+<li><b>Reacting to or changing operations:</b> the listeners in {@link com.schoste.ddd.infrastructure.dao.v4.services.listeners}.</li>
+<li><b>Exceptions:</b> {@link com.schoste.ddd.infrastructure.dao.v4.exceptions}.</li>
+</ul>
+
+<h1>Example</h1>
+<p>A data object and its use; the DAO itself comes from one of the storage artifacts (e.g. a subclass of
+{@code AbstractSerializationDAO}) and can be created with {@code new} or injected by a framework such as Spring.</p>
+<pre>
+public class CustomerDO extends DataObject&lt;Long&gt;
+{
+    private static final long serialVersionUID = 1L;
+
+    private String name;
+
+    public String getName() { return this.name; }
+    public void setName(String name) { this.name = name; }
+}
+
+DAO&lt;Long, CustomerDO&gt; dao = ...;
+
+CustomerDO customer = dao.createDataObject();     // virtual id
+customer.setName("Example Ltd.");
+dao.save(customer);                               // actual id and time stamps from now on
+
+CustomerDO stored = dao.get(customer.getId());
+boolean deleted = (stored == null) || stored.isDeleted();   // deleted = flagged or missing
+
+// change tracking: the caller keeps the highest modification time stamp it has processed
+long processedUntil = Long.MIN_VALUE;
+
+try (Stream&lt;CustomerDO&gt; changed = dao.getModifiedSince(processedUntil, DeletedDataObjects.INCLUDE))
+{
+    for (CustomerDO dataObject : (Iterable&lt;CustomerDO&gt;) changed::iterator)
+    {
+        // data objects with exactly processedUntil are provided again: skip the ones already processed
+        processedUntil = Math.max(processedUntil, dataObject.getModifiedTimestamp());
+    }
+}
+</pre>
+</body>
+</html>
