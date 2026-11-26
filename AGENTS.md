@@ -48,8 +48,20 @@ The Hibernate modules share code (build-helper plugin):
   `CHANGELOG.md`, `AGENTS.md`, `docs/` and the workflows LF. New files take the endings of their neighbors. Git doesn't
   convert them (no `.gitattributes`); `sed -i` in Git Bash turns CRLF into LF, so check endings after shell edits.
 - Java style: tabs and braces on their own line, `this.` for members; some files use spaces – keep the style of the file.
-- Versions: all modules have the version of the parent POM; when it changes, change the `<parent>` version of every module too.
+- Versions: all modules have the version of the parent POM. Change it only with
+  `mvn versions:set -DnewVersion=X.Y.Z.RELEASE -DgenerateBackupPoms=false`, which changes the parent and the `<parent>`
+  version of every module together (changing only the parent breaks the build: the modules can't find it any more).
   Release versions end with `.RELEASE`, development versions with `-SNAPSHOT` (see decision 19).
+
+## Releasing
+
+1. On the branch `X.Y.Z`: set the release version (see above), date the version in `CHANGELOG.md`, update the README's
+   status line. Build with `mvn clean install`; push; CI must be green.
+2. Fast-forward `master` to the branch (`git merge --ff-only X.Y.Z`), so the release is exactly the commit CI tested.
+3. On GitHub, create the release with the tag `X.Y.Z.RELEASE` on `master` and the version's changelog section as notes, and
+   publish it (not as draft): the workflow `maven-publish.yml` builds, tests and deploys all artifacts to GitHub Packages.
+4. GitHub Packages refuses to overwrite a version: if the deploy fails after some artifacts were published, delete those
+   packages' version before publishing again. The version stays at the release afterwards (no new `-SNAPSHOT`).
 - Dependencies: the main artifacts depend on nothing but `dao4` and Hibernate. JDBC drivers, connection pools and Spring are
   test dependencies only.
 

@@ -3,7 +3,7 @@
 What changed between the versions of DAO 4, for users of the artifacts. Versions without a release date aren't released yet.
 All artifacts of a version are released together and have the same version (release versions end with `.RELEASE`).
 
-## 4.1.0 (not released yet)
+## 4.1.0 (2026-11-26)
 
 **Added**
 
@@ -20,8 +20,11 @@ All artifacts of a version are released together and have the same version (rele
   merge an entity whose id isn't in the database). There is no visible change: if saving fails, the data object keeps its
   virtual id, as before. Reads use `Session.find` instead of `Session.get`.
 - The POMs describe the artifacts and name license, source repository and issue tracker.
+- Documented that the time stamps of the raw file DAO have the file system's precision (on Linux, files written a few
+  milliseconds apart can get the same time stamp), and that contract tests of such storages override
+  `AbstractDAOContractTest.awaitStorageClockTick()`.
 
-**Upgrading from 4.0.0**
+**Upgrading from 4.0.0 (development versions)**
 
 - Nothing to do for `dao4`, `dao4-fs-serialization` and `dao4-hibernate`: change the version only.
 - If you used `dao4-hibernate` 4.0.0 with Hibernate 6 or 7 and overrode `getStorageTimestamp`, `doGet` or `doSave` to make it
@@ -29,7 +32,9 @@ All artifacts of a version are released together and have the same version (rele
 
 **Tested with** Hibernate 5.6.15 (`dao4-hibernate`), 6.6.59 and 7.4.15 (`dao4-hibernate-jakarta`); built with JDK 21.
 
-## 4.0.0 (not released yet)
+## 4.0.0 (not released)
+
+4.0.0 wasn't released on its own; 4.1.0 is the first release of DAO 4 and contains all of it.
 
 The first version of DAO 4: new artifacts (`dao4`, `dao4-fs-serialization`, `dao4-hibernate`) and packages
 (`com.schoste.ddd.infrastructure.dao.v4`), which can be used side by side with DAO 2.x and 3.x. The contract changed in many

@@ -59,6 +59,7 @@
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
         <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
+        <versions-maven-plugin.version>2.25.1</versions-maven-plugin.version>
         <junit.version>4.13.2</junit.version>
         <!-- latest Spring version compatible with Java 8 -->
         <spring.version>5.3.39</spring.version>
@@ -185,6 +186,16 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>${build-helper-maven-plugin.version}</version>
+                </plugin>
+
+                <!--
+                Changes the version of the parent and of all modules together (the modules name the parent's version):
+                mvn versions:set -DnewVersion=X.Y.Z.RELEASE -DgenerateBackupPoms=false
+                -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>${versions-maven-plugin.version}</version>
                 </plugin>
 
                 <!-- Every module also provides its test classes (e.g. the in-memory DAO and the DAO contract tests) as test-jar -->

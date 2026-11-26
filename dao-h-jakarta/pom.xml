@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.schoste.ddd.infrastructure</groupId>
         <artifactId>dao4-parent</artifactId>
-        <version>4.1.0-SNAPSHOT</version>
+        <version>4.1.0.RELEASE</version>
     </parent>
     <artifactId>dao4-hibernate-jakarta</artifactId>
     <name>DAO 4 - Hibernate (Jakarta: Hibernate 6.6 and later)</name>

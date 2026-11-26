@@ -4,7 +4,7 @@ A small library for loading, saving, deleting and tracking changes of **data obj
 (file system, serialized files, a database via Hibernate, or memory), behind one interface:
 `DAO<ID, DO>` (**DAO** = Data Access Object; **DO** = data object).
 
-> **Status:** version 4.1.0 is under development and not released yet. This page describes the contract of 4.1.0;
+> **Status:** this page describes version 4.1.0 (`4.1.0.RELEASE`), the first release of DAO 4;
 > what changed between the versions is in the [changelog](CHANGELOG.md).
 > The Javadoc of each type is the complete reference; this page is the entry point.
 
