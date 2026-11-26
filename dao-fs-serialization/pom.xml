@@ -7,6 +7,10 @@
     </parent>
     <artifactId>dao4-fs-serialization</artifactId>
     <name>DAO 4 - file system and serialization</name>
+    <description>
+        DAOs which store each data object in its own file of a folder, as raw bytes (e.g. images) or serialized
+        (Java 8 and later, no dependencies besides dao4).
+    </description>
 
     <dependencies>
         <dependency>

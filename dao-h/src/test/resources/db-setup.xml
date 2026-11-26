@@ -9,9 +9,8 @@
     http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
 
     <!--
-    Define a database script which will be executed on start
-    The attribute data-source refers to the bean id of the data source class
-    (e.g. org.apache.commons.dbcp.BasicDataSource, see orm.xml)
+    Creates the tables (hsql-structure.sql) when a test context starts.
+    The attribute data-source refers to the data source of META-INF/module.xml.
     -->
     <jdbc:initialize-database data-source="hsqlTestDataSource" enabled="true">
         <jdbc:script location="classpath:hsql-structure.sql" />

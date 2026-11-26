@@ -7,6 +7,10 @@
     </parent>
     <artifactId>dao4-hibernate</artifactId>
     <name>DAO 4 - Hibernate</name>
+    <description>
+        A DAO which stores data objects in a database via Hibernate 5.6 (Java 8 and later, javax.persistence).
+        For Hibernate 6.6 and later, use dao4-hibernate-jakarta instead: it has the same classes.
+    </description>
 
     <dependencies>
         <dependency>

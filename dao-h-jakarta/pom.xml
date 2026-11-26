@@ -7,6 +7,10 @@
     </parent>
     <artifactId>dao4-hibernate-jakarta</artifactId>
     <name>DAO 4 - Hibernate (Jakarta: Hibernate 6.6 and later)</name>
+    <description>
+        A DAO which stores data objects in a database via Hibernate 6.6 and later, e.g. Hibernate 7 (Java 17 and later,
+        jakarta.persistence). For Hibernate 5.6, use dao4-hibernate instead: it has the same classes.
+    </description>
 
     <properties>
         <!-- Hibernate 7 requires Java 17 -->

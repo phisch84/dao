@@ -132,7 +132,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testCommitBeginsCommitsAndReleasesOnce() throws Exception
+	public void commit_transaction_beginsCommitsAndReleasesOnce() throws Exception
 	{
 		Assert.assertFalse(this.manager.isActive());
 
@@ -149,7 +149,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testRollbackDiscardsAndReleases() throws Exception
+	public void rollback_transaction_discardsAndReleases() throws Exception
 	{
 		try (DAOTransaction transaction = this.manager.begin())
 		{
@@ -160,7 +160,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testCloseWithoutCommitRollsBack() throws Exception
+	public void close_withoutCommit_rollsBack() throws Exception
 	{
 		try (DAOTransaction transaction = this.manager.begin())
 		{
@@ -171,7 +171,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testCloseAfterCommitDoesNothing() throws Exception
+	public void close_afterCommit_doesNothing() throws Exception
 	{
 		DAOTransaction transaction = this.manager.begin();
 
@@ -183,7 +183,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testCompletingTwiceFails() throws Exception
+	public void complete_twice_fails() throws Exception
 	{
 		DAOTransaction transaction = this.manager.begin();
 
@@ -207,7 +207,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testInnerTransactionJoinsOuterOne() throws Exception
+	public void begin_insideTransaction_joinsOuterOne() throws Exception
 	{
 		try (DAOTransaction outer = this.manager.begin())
 		{
@@ -228,7 +228,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testInnerRollbackMarksOuterForRollback() throws Exception
+	public void rollback_innerTransaction_marksOuterForRollback() throws Exception
 	{
 		try (DAOTransaction outer = this.manager.begin())
 		{
@@ -251,7 +251,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testInnerCloseWithoutCommitMarksOuterForRollback() throws Exception
+	public void close_innerWithoutCommit_marksOuterForRollback() throws Exception
 	{
 		try (DAOTransaction outer = this.manager.begin())
 		{
@@ -272,7 +272,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testOuterCommitWithOpenInnerTransactionFailsAndStaysOpen() throws Exception
+	public void commit_outerWithOpenInner_failsAndStaysOpen() throws Exception
 	{
 		try (DAOTransaction outer = this.manager.begin())
 		{
@@ -295,7 +295,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testOuterRollbackWithOpenInnerTransactionRollsBack() throws Exception
+	public void rollback_outerWithOpenInner_rollsBack() throws Exception
 	{
 		DAOTransaction inner;
 
@@ -315,7 +315,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testFailingCommitRollsBackAndReleases() throws Exception
+	public void commit_failing_rollsBackAndReleases() throws Exception
 	{
 		this.manager.failCommit = true;
 
@@ -337,7 +337,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testFailingBeginLeavesNoTransaction() throws Exception
+	public void begin_failing_leavesNoTransaction() throws Exception
 	{
 		this.manager.failBegin = true;
 
@@ -366,7 +366,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testSetRollbackOnlyMarksTransactionOfTheThread() throws Exception
+	public void setRollbackOnly_transactionOfThread_marksIt() throws Exception
 	{
 		Assert.assertFalse(AbstractDAOTransactionManager.setRollbackOnly(this.resourceKey));
 
@@ -386,7 +386,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testResourceIsBoundToTheThreadUntilCompletion() throws Exception
+	public void begin_resource_isBoundToThreadUntilCompletion() throws Exception
 	{
 		Assert.assertNull(AbstractDAOTransactionManager.getBoundResource(this.resourceKey, String.class));
 
@@ -407,7 +407,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testOtherThreadBeginsItsOwnTransaction() throws Exception
+	public void begin_otherThread_getsItsOwnTransaction() throws Exception
 	{
 		try (DAOTransaction transaction = this.manager.begin())
 		{
@@ -430,7 +430,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testTransactionCantBeCompletedByOtherThread() throws Exception
+	public void complete_byOtherThread_fails() throws Exception
 	{
 		try (DAOTransaction transaction = this.manager.begin())
 		{
@@ -445,7 +445,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testManagersOfTheSameStorageShareTheTransaction() throws Exception
+	public void begin_managersOfSameStorage_shareTransaction() throws Exception
 	{
 		RecordingTransactionManager otherManager = new RecordingTransactionManager(this.resourceKey, this.calls);
 
@@ -467,7 +467,7 @@ public class AbstractDAOTransactionManagerTest
 	}
 
 	@Test
-	public void testManagersOfOtherStoragesHaveTheirOwnTransactions() throws Exception
+	public void begin_managersOfOtherStorages_haveOwnTransactions() throws Exception
 	{
 		RecordingTransactionManager otherManager = new RecordingTransactionManager(new Object(), this.calls);
 

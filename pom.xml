@@ -1,11 +1,47 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         child.project.url.inherit.append.path="false">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-parent</artifactId>
     <version>4.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>DAO 4 (parent)</name>
-    <url>https://www.schoste.com/</url>
+    <description>
+        DAO 4: data access objects which load, save, delete and track changes of data objects in a storage (files, serialized
+        files, a database via Hibernate, or memory), behind one interface. Documentation: the README of the GitHub repository
+        and the Javadoc jars of the artifacts (start with the overview of dao4).
+    </description>
+    <!-- the modules inherit url and scm unchanged (child...inherit.append.path="false"): they all live in this repository -->
+    <url>https://github.com/phisch84/dao</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://github.com/phisch84/dao/blob/master/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Philipp Schosteritsch</name>
+            <email>s.philipp@schoste.com</email>
+            <url>https://www.schoste.com/</url>
+        </developer>
+    </developers>
+
+    <scm child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false"
+         child.scm.url.inherit.append.path="false">
+        <connection>scm:git:https://github.com/phisch84/dao.git</connection>
+        <developerConnection>scm:git:https://github.com/phisch84/dao.git</developerConnection>
+        <url>https://github.com/phisch84/dao</url>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/phisch84/dao/issues</url>
+    </issueManagement>
 
     <modules>
         <module>dao</module>

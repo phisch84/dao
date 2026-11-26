@@ -4,7 +4,8 @@ A small library for loading, saving, deleting and tracking changes of **data obj
 (file system, serialized files, a database via Hibernate, or memory), behind one interface:
 `DAO<ID, DO>` (**DAO** = Data Access Object; **DO** = data object).
 
-> **Status:** version 4.1.0 is under development and not released yet. This page describes the contract of 4.1.0.
+> **Status:** version 4.1.0 is under development and not released yet. This page describes the contract of 4.1.0;
+> what changed between the versions is in the [changelog](CHANGELOG.md).
 > The Javadoc of each type is the complete reference; this page is the entry point.
 
 ## Modules
@@ -28,19 +29,53 @@ The major version is part of both the artifact id and the package name, so versi
 the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) while a project migrates; see
 [Migrating from DAO 2.x and 3.x](#migrating-from-dao-2x-and-3x).
 
+All artifacts of a release have the same version. Release versions end with `.RELEASE` (e.g. `4.1.0.RELEASE`); they never
+change. Development versions (`-SNAPSHOT`) aren't published.
+
+### Getting the artifacts
+
+GitHub Packages needs a login also for public packages:
+
+1. Create a GitHub personal access token (classic) with the scope `read:packages`.
+2. Add it to your Maven settings (`~/.m2/settings.xml`):
+
+   ```xml
+   <servers>
+       <server>
+           <id>github-dao</id>
+           <username>YOUR_GITHUB_USER</username>
+           <password>YOUR_TOKEN</password>
+       </server>
+   </servers>
+   ```
+
+3. Add the repository to your project's `pom.xml`, with the same id:
+
+   ```xml
+   <repositories>
+       <repository>
+           <id>github-dao</id>
+           <url>https://maven.pkg.github.com/phisch84/dao</url>
+       </repository>
+   </repositories>
+   ```
+
+The Javadoc jars are the reference documentation: IDEs show them when they download them (e.g. Eclipse and VS Code with
+"download Javadoc" enabled, or `mvn dependency:resolve -Dclassifier=javadoc`). Start with the overview of `dao4`.
+
 ```xml
 <!-- the interface and everything common to all storages -->
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.0.RELEASE</version>
 </dependency>
 
 <!-- a storage: files and serialized files ... -->
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-fs-serialization</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.0.RELEASE</version>
 </dependency>
 
 <!-- ... or a database via Hibernate 5.6 (brings hibernate-core only: add the JDBC driver of your database yourself,
@@ -48,7 +83,7 @@ the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) whi
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-hibernate</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.0.RELEASE</version>
 </dependency>
 
 <!-- ... or a database via Hibernate 6.6 or later (the same; brings Hibernate 7's hibernate-core, so declare
@@ -56,14 +91,14 @@ the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) whi
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-hibernate-jakarta</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.0.RELEASE</version>
 </dependency>
 
 <!-- for your tests: the in-memory DAO and the DAO contract tests (need JUnit 4) -->
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.0.RELEASE</version>
     <classifier>tests</classifier>
     <type>test-jar</type>
     <scope>test</scope>
@@ -243,6 +278,9 @@ version 4 can be on the class path at the same time, so a project can migrate on
 - The Hibernate artifacts don't bring commons-dbcp or Spring ORM along; declare them yourself if you use them.
 
 ## Building
+
+Contributors (people and AI agents) start with [AGENTS.md](AGENTS.md): layout, conventions and how to test; the reasons
+behind the design are in [docs/decisions.md](docs/decisions.md).
 
 ```
 mvn clean verify
