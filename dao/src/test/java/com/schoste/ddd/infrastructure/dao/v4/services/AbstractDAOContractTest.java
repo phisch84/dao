@@ -40,7 +40,8 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
  * <li>{@link #getNotExistingId()}: an actual id which never belongs to a data object of the storage.</li>
  * <li>{@link #deletesPhysically()}: true if the implementation deletes physically instead of logically
  * (see {@link DAO#delete(DataObject)}). The tests then expect deleted data objects to be missing instead of flagged.</li>
- * <li>{@link #awaitStorageClockTick()}: only if the storage's clock isn't the clock of the test's host.</li>
+ * <li>{@link #awaitStorageClockTick()}: only if the storage's clock isn't the JVM's clock (e.g. a database server, or a file
+ * system with coarser time stamps).</li>
  * </ul>
  *
  * Example for the DAO {@code InMemoryCustomerDAO} of the data object {@code CustomerDO} (see the overview of the {@code dao4} artifact
@@ -115,8 +116,9 @@ public abstract class AbstractDAOContractTest<ID extends Serializable, DO extend
 
 	/**
 	 * Waits until the storage's clock has advanced by at least one millisecond, so that the next modification gets a
-	 * greater modification time stamp than the previous one. By default the clock of the test's host is used.
-	 * Override this method if the storage uses a different clock (e.g. a database server).
+	 * greater modification time stamp than the previous one. By default the JVM's clock is used.
+	 * Override this method if the storage uses a different clock: e.g. a database server, or a file system whose time stamps
+	 * come from a coarser clock (on Linux, files written a few milliseconds apart can get the same modification time).
 	 */
 	protected void awaitStorageClockTick()
 	{

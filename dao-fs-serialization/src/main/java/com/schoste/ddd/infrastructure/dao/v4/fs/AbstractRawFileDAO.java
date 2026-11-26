@@ -16,7 +16,9 @@ import com.schoste.ddd.infrastructure.dao.v4.fs.FileDataObject;
  * is stored in its own file.
  *
  * When files are saved, their content is completely overwritten and never appended.
- * The time stamps of a file object are the creation and last modification time stamps of its file.
+ * The time stamps of a file object are the creation and last modification time stamps of its file. Their precision is the
+ * file system's: files written a few milliseconds apart can get the same time stamp (e.g. on Linux), which change tracking
+ * allows for (see {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO#getModifiedSince(long)}).
  *
  * Deletes physically: deletions are not reported by change tracking. A file holds nothing but the data of its file object,
  * so there is no place to store a deleted flag; deleting a file object deletes its file.
