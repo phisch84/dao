@@ -10,6 +10,10 @@
  * <li>{@link com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader} and
  * {@link com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader}: load the data objects of returned streams
  * lazily; implementations create them in {@code doCreateLoader}.</li>
+ * <li>{@link com.schoste.ddd.infrastructure.dao.v4.services.DAOTransactionManager} and
+ * {@link com.schoste.ddd.infrastructure.dao.v4.services.DAOTransaction}: transactions which several DAO calls join, so that their
+ * changes are stored all together or not at all; {@link com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAOTransactionManager}
+ * is the base class for their implementations.</li>
  * </ul>
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;

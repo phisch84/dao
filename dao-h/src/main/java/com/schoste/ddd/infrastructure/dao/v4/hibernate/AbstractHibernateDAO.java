@@ -18,10 +18,17 @@ import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
 import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAO;
 import com.schoste.ddd.infrastructure.dao.v4.services.SourceRecordDataObjectLoader;
+import com.schoste.ddd.infrastructure.dao.v4.services.AbstractDAOTransactionManager;
 
 /**
  * Implementation of the DAO interface which stores data objects in a database via Hibernate.
  * Data objects are loaded with HQL queries on the entity named {@link #getEntityName()}.
+ * <p>
+ * The DAO joins the transaction which the calling thread has begun with a {@link HibernateDAOTransactionManager} of its session
+ * factory: all its calls then use the session of that transaction, so their changes are committed or rolled back with it, and
+ * its reads see the changes made in it. Each call flushes its changes to the database and detaches all data objects from the
+ * session, so the data objects it returns or saves stay detached as without a transaction. A failed call marks the transaction for
+ * rollback. Without a transaction, each call uses its own session and, if it changes the database, its own database transaction.
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  *
@@ -41,11 +48,23 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	/**
 	 * Gets the Hibernate session factory used to open the sessions for all storage operations of this DAO.
 	 * Each operation opens its own session and closes it once it is done (data object loaders close their session
-	 * when the stream they serve is closed).
+	 * when the stream they serve is closed), unless the calling thread has a transaction of the session factory
+	 * (see {@link #getTransactionSession()}).
 	 *
 	 * @return the session factory to open sessions with
 	 */
 	protected abstract SessionFactory getSessionFactory();
+
+	/**
+	 * Gets the session of the transaction which the calling thread has begun with a {@link HibernateDAOTransactionManager}
+	 * of this DAO's session factory.
+	 *
+	 * @return the session of the transaction, or null if the calling thread has no transaction of the session factory
+	 */
+	protected Session getTransactionSession()
+	{
+		return AbstractDAOTransactionManager.getBoundResource(this.getSessionFactory(), Session.class);
+	}
 
 	/**
 	 * An operation on an open session (see {@link AbstractHibernateDAO#inTransaction(SessionOperation)}).
@@ -65,12 +84,40 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	/**
 	 * Runs an operation in a transaction on a new session. The transaction is committed if the operation succeeds
 	 * and rolled back if it throws an exception. The session is closed in any case.
+	 * <p>
+	 * If the calling thread has a transaction of the session factory ({@link #getTransactionSession()}), the operation runs on its
+	 * session instead and doesn't complete it: the changes are flushed to the database and all data objects are detached from the
+	 * session. If the operation throws an exception, the transaction is marked for rollback.
 	 *
 	 * @param operation the operation to run
 	 * @throws Exception re-throws every exception
 	 */
 	protected void inTransaction(SessionOperation operation) throws Exception
 	{
+		Session transactionSession = this.getTransactionSession();
+
+		if (transactionSession != null)
+		{
+			try
+			{
+				operation.run(transactionSession);
+
+				transactionSession.flush();
+			}
+			catch (Exception e)
+			{
+				AbstractDAOTransactionManager.setRollbackOnly(this.getSessionFactory());
+
+				throw e;
+			}
+			finally
+			{
+				transactionSession.clear();
+			}
+
+			return;
+		}
+
 		try (Session session = this.getSessionFactory().openSession())
 		{
 			Transaction transaction = session.beginTransaction();
@@ -123,11 +170,24 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * In a transaction ({@link #getTransactionSession()}), the data object is read with its session and detached from it.
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
 	protected synchronized DO doGet(ID id) throws Exception
 	{
+		Session transactionSession = this.getTransactionSession();
+
+		if (transactionSession != null)
+		{
+			DO dataObject = (DO) transactionSession.get(this.getDataObjectClass(), id);
+
+			if (dataObject != null) transactionSession.evict(dataObject);
+
+			return dataObject;
+		}
+
 		try (Session session = this.getSessionFactory().openSession())
 		{
 			return (DO) session.get(this.getDataObjectClass(), id);
@@ -200,28 +260,24 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	 * Creates a query on a new session that streams the data objects which match the given condition.
 	 * Every data object is evicted from the session before it is passed on, to release it from the session's memory.
 	 * Closing the returned stream also closes the session.
+	 * In a transaction ({@link #getTransactionSession()}), the query runs on its session, which stays open when the stream is closed.
 	 *
 	 * @param whereClause the HQL condition (entity alias e, positional parameters ?1, ?2, ...) or null to stream all data objects
 	 * @param params the values of the positional parameters, in order
 	 * @return a stream of the data objects that match the condition
 	 * @throws Exception re-throws every exception
 	 */
-	@SuppressWarnings("unchecked")
 	protected Stream<DO> streamDataObjects(String whereClause, Object... params) throws Exception
 	{
+		Session transactionSession = this.getTransactionSession();
+
+		if (transactionSession != null) return this.queryDataObjects(transactionSession, whereClause, params);
+
 		Session session = this.getSessionFactory().openSession();
 
 		try
 		{
-			String hql = String.format("SELECT e FROM %s e", this.getEntityName());
-
-			if (whereClause != null) hql += " WHERE " + whereClause;
-
-			Query<DO> query = session.createQuery(hql, this.getDataObjectClass());
-
-			for (int i=0; i<params.length; i++) query.setParameter(i+1, params[i]);
-
-			return query.stream().peek(session::evict).onClose(session::close);
+			return this.queryDataObjects(session, whereClause, params).onClose(session::close);
 		}
 		catch (Exception e)
 		{
@@ -229,6 +285,31 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 			throw e;
 		}
+	}
+
+	/**
+	 * Creates a query on a session that streams the data objects which match the given condition (see
+	 * {@link #streamDataObjects(String, Object...)}). Every data object is evicted from the session before it is passed on.
+	 * Closing the returned stream closes the query's results, but not the session.
+	 *
+	 * @param session the session to run the query on
+	 * @param whereClause the HQL condition (entity alias e, positional parameters ?1, ?2, ...) or null to stream all data objects
+	 * @param params the values of the positional parameters, in order
+	 * @return a stream of the data objects that match the condition
+	 * @throws Exception re-throws every exception
+	 */
+	@SuppressWarnings("unchecked")
+	private Stream<DO> queryDataObjects(Session session, String whereClause, Object... params) throws Exception
+	{
+		String hql = String.format("SELECT e FROM %s e", this.getEntityName());
+
+		if (whereClause != null) hql += " WHERE " + whereClause;
+
+		Query<DO> query = session.createQuery(hql, this.getDataObjectClass());
+
+		for (int i=0; i<params.length; i++) query.setParameter(i+1, params[i]);
+
+		return query.stream().peek(session::evict);
 	}
 
 	/**
@@ -256,4 +337,4 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 		return SourceRecordDataObjectLoader.forModifiedSince(this, dataObjects, Function.identity(), modifiedSince, deleted);
 	}
-}
+}
