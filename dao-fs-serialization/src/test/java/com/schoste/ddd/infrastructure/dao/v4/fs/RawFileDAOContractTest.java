@@ -1,6 +1,10 @@
 package com.schoste.ddd.infrastructure.dao.v4.fs;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,4 +44,37 @@ public class RawFileDAOContractTest extends AbstractDAOContractTest<Long, FileSy
 	 */
 	@Override
 	protected boolean deletesPhysically() { return true; }
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * The time stamps of the raw file DAO come from the file system, whose clock can be coarser than the JVM's (e.g. on Linux,
+	 * files written a few milliseconds apart can get the same modification time). Therefore a probe file next to the storage
+	 * folder (on the same file system) is written again until its modification time has advanced.
+	 */
+	@Override
+	protected void awaitStorageClockTick()
+	{
+		Path probe = this.dao.getStoragePath().resolveSibling(this.dao.getStoragePath().getFileName() + ".clock-probe");
+
+		try
+		{
+			long start = writeAndGetModifiedTime(probe);
+
+			while (writeAndGetModifiedTime(probe) <= start) Thread.yield();
+
+			Files.deleteIfExists(probe);
+		}
+		catch (IOException e)
+		{
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private static long writeAndGetModifiedTime(Path file) throws IOException
+	{
+		Files.write(file, new byte[] { 0 });
+
+		return Files.getLastModifiedTime(file).toMillis();
+	}
 }
