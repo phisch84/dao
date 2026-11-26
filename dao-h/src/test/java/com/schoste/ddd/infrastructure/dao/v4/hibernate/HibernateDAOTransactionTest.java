@@ -30,10 +30,10 @@ import com.schoste.ddd.infrastructure.dao.v4.services.DAOTransaction;
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 @ContextConfiguration(locations = {
-		"file:src/test/resources/META-INF/module.xml",
-		"file:src/test/resources/META-INF/beans.xml",
-		"file:src/test/resources/db-setup.xml",
-		"file:src/test/resources/HibernateDAOTransactionTest.xml",
+		"classpath:META-INF/module.xml",
+		"classpath:META-INF/beans.xml",
+		"classpath:db-setup.xml",
+		"classpath:HibernateDAOTransactionTest.xml",
 		})
 @RunWith(SpringJUnit4ClassRunner.class)
 public class HibernateDAOTransactionTest
@@ -102,7 +102,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testCommitStoresTheChangesOfAllDAOs() throws Exception
+	public void commit_changesOfSeveralDAOs_storesAll() throws Exception
 	{
 		try (DAOTransaction transaction = this.transactionManager.begin())
 		{
@@ -117,7 +117,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testRollbackDiscardsTheChangesOfAllDAOs() throws Exception
+	public void rollback_changesOfSeveralDAOs_discardsAll() throws Exception
 	{
 		HibernateDO stored = this.saveDataObject(this.hibernateDAO, "stored");
 
@@ -136,7 +136,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testCloseWithoutCommitDiscardsTheChanges() throws Exception
+	public void close_withoutCommit_discardsChanges() throws Exception
 	{
 		try (DAOTransaction transaction = this.transactionManager.begin())
 		{
@@ -147,7 +147,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testRollbackDiscardsDeletions() throws Exception
+	public void rollback_deletion_discardsIt() throws Exception
 	{
 		HibernateDO stored = this.saveDataObject(this.hibernateDAO, "stored");
 
@@ -162,7 +162,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testNewDataObjectGetsItsActualIdInTheTransaction() throws Exception
+	public void save_newDataObjectInTransaction_getsActualIdBeforeCommit() throws Exception
 	{
 		try (DAOTransaction transaction = this.transactionManager.begin())
 		{
@@ -180,7 +180,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testReadsInTheTransactionSeeItsChanges() throws Exception
+	public void get_inTransaction_seesItsChanges() throws Exception
 	{
 		try (DAOTransaction transaction = this.transactionManager.begin())
 		{
@@ -209,7 +209,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testClosingAStreamKeepsTheTransaction() throws Exception
+	public void closeStream_inTransaction_keepsTransaction() throws Exception
 	{
 		try (DAOTransaction transaction = this.transactionManager.begin())
 		{
@@ -229,7 +229,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testDataObjectsReadInTheTransactionAreDetached() throws Exception
+	public void get_inTransaction_providesDetachedDataObjects() throws Exception
 	{
 		HibernateDO stored = this.saveDataObject(this.hibernateDAO, "stored");
 
@@ -256,7 +256,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testFailedDAOCallMarksTheTransactionForRollback() throws Exception
+	public void failedCall_inTransaction_marksItForRollback() throws Exception
 	{
 		try (DAOTransaction transaction = this.transactionManager.begin())
 		{
@@ -282,7 +282,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testNestedTransactionsCommitOnlyWithTheOutermostOne() throws Exception
+	public void commit_nestedTransactions_onlyOutermostCommits() throws Exception
 	{
 		try (DAOTransaction outer = this.transactionManager.begin())
 		{
@@ -302,7 +302,7 @@ public class HibernateDAOTransactionTest
 	}
 
 	@Test
-	public void testDAOCallsWithoutTransactionAreStoredImmediately() throws Exception
+	public void save_withoutTransaction_storesImmediately() throws Exception
 	{
 		this.saveDataObject(this.hibernateDAO, "a");
 

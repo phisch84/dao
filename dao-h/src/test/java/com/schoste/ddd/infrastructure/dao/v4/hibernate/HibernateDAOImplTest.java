@@ -15,16 +15,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import com.schoste.ddd.infrastructure.dao.v4.exceptions.DAOException;
+
 /**
  * Tests of the Hibernate DAO which go beyond the DAO contract tests ({@link HibernateDAOContractTest})
  *
  * @author Philipp Schosteritsch &lt;s.philipp@schoste.com&gt;
  */
 @ContextConfiguration(locations = {
-		"file:src/test/resources/META-INF/module.xml",
-		"file:src/test/resources/META-INF/beans.xml",
-		"file:src/test/resources/db-setup.xml",
-		"file:src/test/resources/HibernateDAOImplTest.xml",
+		"classpath:META-INF/module.xml",
+		"classpath:META-INF/beans.xml",
+		"classpath:db-setup.xml",
+		"classpath:HibernateDAOImplTest.xml",
 		})
 @RunWith(SpringJUnit4ClassRunner.class)
 public class HibernateDAOImplTest
@@ -82,6 +84,55 @@ public class HibernateDAOImplTest
 
 		dataObject.setExampleStringProperty("updated");
 		this.hibernateDAO.save(dataObject);
+		this.assertStoredTimestamps(dataObject);
+	}
+
+	/**
+	 * The time stamp of a saved data object is the current time of the database's clock. The embedded test database runs in
+	 * this JVM, so its clock is the JVM's: the time stamp must be close to it (also proves that the time zone is applied right).
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void save_newDataObject_getsCurrentTimeOfTheDatabase() throws Exception
+	{
+		HibernateDO dataObject = this.hibernateDAO.createDataObject();
+
+		dataObject.setExampleStringProperty("timestamp");
+
+		long before = System.currentTimeMillis();
+		this.hibernateDAO.save(dataObject);
+		long after = System.currentTimeMillis();
+
+		Assert.assertTrue("time stamp " + dataObject.getModifiedTimestamp() + " not in [" + before + ", " + after + "] (+/- 1 s)",
+				(dataObject.getModifiedTimestamp() >= before - 1000L) && (dataObject.getModifiedTimestamp() <= after + 1000L));
+	}
+
+	/**
+	 * A new data object which the database refuses (the column of the property is NOT NULL) isn't stored
+	 * and keeps its virtual id, so it can be saved again.
+	 *
+	 * @throws Exception re-throws every exception
+	 */
+	@Test
+	public void save_newDataObjectRefusedByTheDatabase_keepsItsVirtualId() throws Exception
+	{
+		HibernateDO dataObject = this.hibernateDAO.createDataObject();
+		Long virtualId = dataObject.getId();
+
+		try
+		{
+			this.hibernateDAO.save(dataObject);
+			Assert.fail("saved a data object which violates a constraint");
+		}
+		catch (DAOException e) { }
+
+		Assert.assertEquals(virtualId, dataObject.getId());
+
+		dataObject.setExampleStringProperty("saved again");
+		this.hibernateDAO.save(dataObject);
+
+		Assert.assertFalse(this.hibernateDAO.isVirtualId(dataObject.getId()));
 		this.assertStoredTimestamps(dataObject);
 	}
 }

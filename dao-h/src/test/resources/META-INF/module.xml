@@ -10,9 +10,8 @@
     http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
 	
     <!--
-    Define a database script which will be executed on start
-    The attribute data-source refers to the bean id of the data source class
-    (e.g. org.apache.commons.dbcp.BasicDataSource)
+    The in-memory HSQL database of the tests (shared by dao-h and dao-h-jakarta). The tests use this data source to set up the
+    database (db-setup.xml) and to check the stored rows directly, bypassing Hibernate.
     -->
     <bean id="hsqlTestDataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
         <property name="driverClassName" value="org.hsqldb.jdbcDriver"/>
@@ -21,7 +20,11 @@
         <property name="password" value="" />
     </bean>
 
-    <!-- Hibernate 7 SessionFactory Bean definitions -->
+    <!--
+    The session factory of the DAOs, on the same database, built by the library's SessionFactoryBuilder.
+    These settings and the mapping work with all supported Hibernate versions (5.6, 6.6, 7).
+    -->
+
     <bean id="sessionFactory" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
         <property name="targetClass" value="com.schoste.ddd.infrastructure.dao.v4.hibernate.SessionFactoryBuilder"/>
         <property name="targetMethod" value="buildSessionFactory"/>

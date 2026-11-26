@@ -3,8 +3,13 @@
     <parent>
         <groupId>com.schoste.ddd.infrastructure</groupId>
         <artifactId>dao4-parent</artifactId>
-        <version>4.0.0-SNAPSHOT</version>
+        <version>4.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>dao4</artifactId>
     <name>DAO 4</name>
+    <description>
+        The DAO interface and everything common to all storages (Java 8 and later, no dependencies). The storages come in the
+        artifacts dao4-fs-serialization, dao4-hibernate and dao4-hibernate-jakarta. The test jar (classifier tests) contains an
+        in-memory DAO for tests and the contract tests for DAO implementations. Start with the overview of the Javadoc jar.
+    </description>
 </project>

@@ -6,8 +6,10 @@
 behind one interface, {@link com.schoste.ddd.infrastructure.dao.v4.services.DAO}.</p>
 
 <p>This artifact ({@code dao4}) contains the interface and everything common to all storages. The storages come in their own
-artifacts: {@code dao4-fs-serialization} (files and serialized files) and {@code dao4-hibernate} (databases). The test jar
-({@code dao4}, classifier {@code tests}) contains an in-memory DAO for tests and the contract tests for DAO implementations.</p>
+artifacts: {@code dao4-fs-serialization} (files and serialized files), and for databases {@code dao4-hibernate} (Hibernate 5.6,
+Java 8 and later) or {@code dao4-hibernate-jakarta} (the same for Hibernate 6.6 and later, Java 17 and later; choose one of the
+two). The test jar ({@code dao4}, classifier {@code tests}) contains an in-memory DAO for tests and the contract tests for DAO
+implementations. All artifacts of a release have the same version.</p>
 
 <h1>Where to start</h1>
 <ul>

@@ -26,7 +26,9 @@ import com.schoste.ddd.infrastructure.dao.v4.services.listeners.SaveListener;
  * <li><b>Change tracking is stateless:</b> {@link #getModifiedSince(long)} provides the data objects modified at or after a time stamp.
  * The caller keeps its own time stamp (the highest modification time stamp it has processed) and passes it next time, so several
  * callers can use one DAO independently. Since several changes can get the same time stamp, the data objects with exactly the passed
- * time stamp are provided again; the caller ignores the ones it has already processed. The storage's clock sets the time stamps.
+ * time stamp are provided again; the caller ignores the ones it has already processed. The storage's clock sets the time stamps,
+ * so that the time stamps of all hosts of an application come from one clock; writes which bypass the DAO (e.g. scripts) have to
+ * use the same clock (e.g. the database's current time).
  * A change which a database transaction commits later than other changes may carry an older time stamp than them; callers which
  * must see such changes pass their time stamp minus a safety margin (e.g. the longest duration of a transaction).</li>
  * <li><b>Streams must be closed:</b> methods which provide several data objects return a lazy, sequential {@link Stream}, so that large

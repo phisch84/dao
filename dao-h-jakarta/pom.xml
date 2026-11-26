@@ -1,0 +1,130 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.schoste.ddd.infrastructure</groupId>
+        <artifactId>dao4-parent</artifactId>
+        <version>4.1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>dao4-hibernate-jakarta</artifactId>
+    <name>DAO 4 - Hibernate (Jakarta: Hibernate 6.6 and later)</name>
+    <description>
+        A DAO which stores data objects in a database via Hibernate 6.6 and later, e.g. Hibernate 7 (Java 17 and later,
+        jakarta.persistence). For Hibernate 5.6, use dao4-hibernate instead: it has the same classes.
+    </description>
+
+    <properties>
+        <!-- Hibernate 7 requires Java 17 -->
+        <maven.compiler.release>17</maven.compiler.release>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.schoste.ddd.infrastructure</groupId>
+            <artifactId>dao4</artifactId>
+        </dependency>
+
+        <!-- Hibernate -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+        </dependency>
+
+        <!-- Database drivers depend on the actual usage and therefore their scope is TEST -->
+        <dependency>
+            <groupId>commons-dbcp</groupId>
+            <artifactId>commons-dbcp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-community-dialects</artifactId>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>com.schoste.ddd.infrastructure</groupId>
+            <artifactId>dao4</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+            The module shares the sources, tests and test resources of the module dao-h (Hibernate 5.6), see there;
+            src/main/java holds what is specific to Hibernate 6.6 and later (HibernateVersionSupport, package-info),
+            src/test/java the tests which only this module has
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-shared-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>../dao-h/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-shared-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>../dao-h/src/test/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-shared-test-resources</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>add-test-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>../dao-h/src/test/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+        The oldest supported Hibernate version. The module is built with Hibernate 7; to prove that the built classes also work
+        with Hibernate 6.6, run their tests with it, without compiling them again (see maven-build.yml):
+        mvn install, then mvn -pl dao-h-jakarta -P hibernate-6.6 surefire:test
+        -->
+        <profile>
+            <id>hibernate-6.6</id>
+            <properties>
+                <hibernate-jakarta.version>6.6.59.Final</hibernate-jakarta.version>
+            </properties>
+        </profile>
+    </profiles>
+</project>

@@ -9,9 +9,8 @@
     http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
 
     <!--
-    Define a database script which will be executed before HibernateDAOTest tests execute.
-    The attribute data-source refers to the bean id of the data source class
-    (e.g. org.apache.commons.dbcp.BasicDataSource, see orm.xml)
+    Inserts the example rows of HibernateDAOImplTest.sql when the test context of HibernateDAOImplTest and
+    HibernateDAOContractTest starts. The attribute data-source refers to the data source of META-INF/module.xml.
     -->
     <jdbc:initialize-database data-source="hsqlTestDataSource" enabled="true">
         <jdbc:script location="classpath:HibernateDAOImplTest.sql" />

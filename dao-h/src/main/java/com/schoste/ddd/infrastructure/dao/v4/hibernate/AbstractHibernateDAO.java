@@ -10,9 +10,7 @@ import com.schoste.ddd.infrastructure.dao.v4.services.DeletedDataObjects;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.query.Query;
-import org.hibernate.type.DbTimestampType;
 
 import com.schoste.ddd.infrastructure.dao.v4.models.DataObject;
 import com.schoste.ddd.infrastructure.dao.v4.services.DataObjectLoader;
@@ -139,6 +137,8 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 	/**
 	 * Merges a data object into a session and takes over the id assigned by the storage (e.g. for a new data object).
+	 * A new data object (virtual id) is merged without its id, so Hibernate inserts it: Hibernate 6.6 and later refuse to merge an
+	 * entity whose id isn't in the database. If the merge fails, the data object keeps its virtual id.
 	 *
 	 * @param session the session to merge the data object into
 	 * @param dataObject the data object to merge
@@ -146,14 +146,27 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	@SuppressWarnings("unchecked")
 	private void merge(Session session, DO dataObject)
 	{
-		dataObject.setId(((DO) session.merge(dataObject)).getId());
+		ID id = dataObject.getId();
+		boolean isNew = this.isVirtualId(id);
+
+		if (isNew) dataObject.setId(null);
+
+		try
+		{
+			dataObject.setId(((DO) session.merge(dataObject)).getId());
+		}
+		catch (RuntimeException e)
+		{
+			if (isNew) dataObject.setId(id);
+
+			throw e;
+		}
 	}
 
 	/**
 	 * Gets the current time of the database's clock, as used for the time stamps of saved data objects.
-	 * The time is queried by the means of the session's SQL dialect; if the dialect doesn't support it,
-	 * Hibernate falls back to the clock of the host. Precision and time zone are therefore the database's
-	 * (e.g. SQLite's {@code current_timestamp} has whole seconds only).
+	 * The time is queried from the database (how, depends on the Hibernate version: see the package documentation),
+	 * so its precision is the database's (e.g. SQLite's {@code current_timestamp} has whole seconds only).
 	 * <p>
 	 * This is a hook: a DAO which needs another clock overrides it, e.g. to return {@link System#currentTimeMillis()}
 	 * when the application is the only writer of the database and needs time stamps with milliseconds. The returned
@@ -165,7 +178,7 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	 */
 	protected long getStorageTimestamp(Session session)
 	{
-		return DbTimestampType.INSTANCE.seed((SharedSessionContractImplementor) session).getTime();
+		return HibernateVersionSupport.getDatabaseTimestamp(session);
 	}
 
 	/**
@@ -181,7 +194,7 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 		if (transactionSession != null)
 		{
-			DO dataObject = (DO) transactionSession.get(this.getDataObjectClass(), id);
+			DO dataObject = (DO) transactionSession.find(this.getDataObjectClass(), id);
 
 			if (dataObject != null) transactionSession.evict(dataObject);
 
@@ -190,7 +203,7 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 
 		try (Session session = this.getSessionFactory().openSession())
 		{
-			return (DO) session.get(this.getDataObjectClass(), id);
+			return (DO) session.find(this.getDataObjectClass(), id);
 		}
 	}
 
@@ -240,7 +253,7 @@ public abstract class AbstractHibernateDAO <ID extends Serializable, DO extends 
 	@Override
 	protected void doClear() throws Exception
 	{
-		this.inTransaction(session -> session.createQuery(String.format("DELETE FROM %s e", this.getEntityName())).executeUpdate());
+		this.inTransaction(session -> HibernateVersionSupport.executeUpdate(session, String.format("DELETE FROM %s e", this.getEntityName())));
 	}
 
 	/**

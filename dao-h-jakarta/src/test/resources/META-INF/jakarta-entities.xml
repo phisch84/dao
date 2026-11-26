@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+The mapping of META-INF/example-entities.xml (shared with the module dao-h) in the format of Jakarta Persistence,
+as in the example of the package documentation
+-->
+<entity-mappings
+    xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm/orm_3_0.xsd"
+    version="3.0">
+
+    <mapped-superclass class="com.schoste.ddd.infrastructure.dao.v4.models.DataObject" access="FIELD">
+        <attributes>
+            <id name="id">
+                <generated-value strategy="IDENTITY"/>
+            </id>
+            <basic name="createdTimestamp">
+                <column name="created"/>
+            </basic>
+            <basic name="modifiedTimestamp">
+                <column name="modified"/>
+            </basic>
+            <basic name="deleted">
+                <column name="deleted"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <entity class="com.schoste.ddd.infrastructure.dao.v4.hibernate.HibernateDO" name="HibernateDO">
+        <table name="hibernate_do"/>
+        <attributes>
+            <basic name="exampleStringProperty">
+                <column name="example_string_property"/>
+            </basic>
+        </attributes>
+    </entity>
+</entity-mappings>
