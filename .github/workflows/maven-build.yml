@@ -26,8 +26,15 @@ jobs:
         server-id: github # Value of the repositories/repository/id field of the pom.xml
         settings-path: ${{ github.workspace }} # location for the settings.xml file
 
-    # compiles against the Java 8 API (maven.compiler.release) and runs all tests
+    # compiles against the Java 8 API (maven.compiler.release; dao-h-jakarta: Java 17) and runs all tests;
+    # install (into the runner's local repository only), so that the next step finds the modules
     - name: Build and test with Maven
-      run: mvn -B -ntp verify -s $GITHUB_WORKSPACE/settings.xml
+      run: mvn -B -ntp install -s $GITHUB_WORKSPACE/settings.xml
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    # runs the tests of dao-h-jakarta, built with Hibernate 7, with the oldest supported Hibernate version, without compiling again
+    - name: Test dao-h-jakarta with Hibernate 6.6
+      run: mvn -B -ntp -pl dao-h-jakarta -P hibernate-6.6 surefire:test -s $GITHUB_WORKSPACE/settings.xml
       env:
         GITHUB_TOKEN: ${{ github.token }}

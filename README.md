@@ -4,7 +4,7 @@ A small library for loading, saving, deleting and tracking changes of **data obj
 (file system, serialized files, a database via Hibernate, or memory), behind one interface:
 `DAO<ID, DO>` (**DAO** = Data Access Object; **DO** = data object).
 
-> **Status:** version 4.0.0 is under development and not released yet. This page describes the contract of 4.0.0.
+> **Status:** version 4.1.0 is under development and not released yet. This page describes the contract of 4.1.0.
 > The Javadoc of each type is the complete reference; this page is the entry point.
 
 ## Modules
@@ -17,7 +17,12 @@ All artifacts have the group id `com.schoste.ddd.infrastructure` and are publish
 | `dao4` | `com.schoste.ddd.infrastructure.dao.v4.*` | The `DAO` interface, the base class `AbstractDAO` for implementations, `DataObject`, listeners, exceptions |
 | `dao4` with classifier `tests` | `….dao.v4.inmemory`, `….dao.v4.services` | An in-memory DAO for your own tests, and contract tests that DAO implementations can run |
 | `dao4-fs-serialization` | `….dao.v4.fs`, `….dao.v4.serialization` | DAOs which store each data object in its own file, as raw bytes or serialized |
-| `dao4-hibernate` | `….dao.v4.hibernate` | A DAO which stores data objects in a database via Hibernate |
+| `dao4-hibernate` | `….dao.v4.hibernate` | A DAO which stores data objects in a database via Hibernate 5.6 (Java 8 and later) |
+| `dao4-hibernate-jakarta` | `….dao.v4.hibernate` | The same DAO for Hibernate 6.6 and later, e.g. Hibernate 7 (Java 17 and later, `jakarta.persistence`) |
+
+Both Hibernate artifacts have the same classes and behave the same (except for how the database's time is queried, see
+[Using a ready-made storage](#using-a-ready-made-storage)); choose the one which fits the Hibernate version of your project,
+never both.
 
 The major version is part of both the artifact id and the package name, so version 4 can be used side by side with
 the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) while a project migrates; see
@@ -28,14 +33,14 @@ the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) whi
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4</artifactId>
-    <version>4.0.0</version>
+    <version>4.1.0</version>
 </dependency>
 
 <!-- a storage: files and serialized files ... -->
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-fs-serialization</artifactId>
-    <version>4.0.0</version>
+    <version>4.1.0</version>
 </dependency>
 
 <!-- ... or a database via Hibernate 5.6 (brings hibernate-core only: add the JDBC driver of your database yourself,
@@ -43,14 +48,22 @@ the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) whi
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4-hibernate</artifactId>
-    <version>4.0.0</version>
+    <version>4.1.0</version>
+</dependency>
+
+<!-- ... or a database via Hibernate 6.6 or later (the same; brings Hibernate 7's hibernate-core, so declare
+     org.hibernate.orm:hibernate-core yourself to use another version) -->
+<dependency>
+    <groupId>com.schoste.ddd.infrastructure</groupId>
+    <artifactId>dao4-hibernate-jakarta</artifactId>
+    <version>4.1.0</version>
 </dependency>
 
 <!-- for your tests: the in-memory DAO and the DAO contract tests (need JUnit 4) -->
 <dependency>
     <groupId>com.schoste.ddd.infrastructure</groupId>
     <artifactId>dao4</artifactId>
-    <version>4.0.0</version>
+    <version>4.1.0</version>
     <classifier>tests</classifier>
     <type>test-jar</type>
     <scope>test</scope>
@@ -63,7 +76,7 @@ the older versions (`dao` 2.x and 3.x, which share the package `….dal.v2`) whi
 </dependency>
 ```
 
-The library is compiled for Java 8 and doesn't need Spring. Spring can create and inject DAOs as usual, but any DAO can also
+The library is compiled for Java 8 (`dao4-hibernate-jakarta` for Java 17, which Hibernate 7 requires) and doesn't need Spring. Spring can create and inject DAOs as usual, but any DAO can also
 be created with `new`.
 
 ## Core rules
@@ -153,8 +166,10 @@ packages contains complete examples:
 | Database via Hibernate | `AbstractHibernateDAO` | `com.schoste.ddd.infrastructure.dao.v4.hibernate` |
 | Memory, for your tests | `AbstractInMemoryDAO` (in the `tests` artifact) | `com.schoste.ddd.infrastructure.dao.v4.inmemory` |
 
-The Hibernate DAO takes the time stamps from the database's clock, so their precision and time zone are the database's
-(e.g. SQLite's clock has whole seconds only). A DAO which needs another clock overrides
+The Hibernate DAO takes the time stamps from the database's clock, so their precision is the database's (e.g. SQLite's
+clock has whole seconds only). `dao4-hibernate` queries the time with the select statement of the SQL dialect, so its time
+zone is the database's; `dao4-hibernate-jakarta` queries it as point in time (HQL `select instant`), which is right also if
+the database's time zone isn't the JVM's (e.g. SQLite's time is in UTC). A DAO which needs another clock overrides
 `AbstractHibernateDAO.getStorageTimestamp(Session)`, e.g. to return `System.currentTimeMillis()` when the application is
 the only writer of the database.
 
@@ -215,15 +230,17 @@ version 4 can be on the class path at the same time, so a project can migrate on
 | `GenericHibernateDAO` | `AbstractHibernateDAO<ID, DO>` |
 | overriding `createDataObject()` | `doCreateDataObject()`, plus `doCreateVirtualId()` and `doIsVirtualId(ID)` |
 
-**Hibernate (`dao-h` → `dao4-hibernate`):**
+**Hibernate (`dao-h` → `dao4-hibernate` or `dao4-hibernate-jakarta`):**
 
-- Hibernate 5.6 instead of Hibernate 4. Own dialects have to be adapted to Hibernate 5.6's API.
+- Hibernate 5.6 (`dao4-hibernate`) or 6.6 and later (`dao4-hibernate-jakarta`) instead of Hibernate 4. Own dialects have to
+  be adapted to the API of that Hibernate version.
 - Map `DataObject` as mapped superclass with field access; its attributes are `id`, `createdTimestamp`, `modifiedTimestamp`
   and `deleted` (the column names are free). The Javadoc of the package `com.schoste.ddd.infrastructure.dao.v4.hibernate` contains
   a complete mapping.
-- With Spring, `org.springframework.orm.hibernate5.LocalSessionFactoryBean` (from `spring-orm`) creates the session factory,
-  as an alternative to `SessionFactoryBuilder`.
-- `dao4-hibernate` doesn't bring commons-dbcp or Spring ORM along; declare them yourself if you use them.
+- With Spring, the `LocalSessionFactoryBean` of `spring-orm` creates the session factory, as an alternative to
+  `SessionFactoryBuilder`: `org.springframework.orm.hibernate5.LocalSessionFactoryBean` up to Spring 6,
+  `org.springframework.orm.jpa.hibernate.LocalSessionFactoryBean` as of Spring 7.
+- The Hibernate artifacts don't bring commons-dbcp or Spring ORM along; declare them yourself if you use them.
 
 ## Building
 
@@ -231,8 +248,18 @@ version 4 can be on the class path at the same time, so a project can migrate on
 mvn clean verify
 ```
 
-Builds with JDK 21 (or newer), targets Java 8, runs all tests and creates the jars, test jars and Javadoc jars.
-The build fails on any Javadoc problem, so the documentation stays complete.
+Builds with JDK 21 (or newer), targets Java 8 (`dao-h-jakarta`: Java 17), runs all tests and creates the jars, test jars and
+Javadoc jars. The build fails on any Javadoc problem, so the documentation stays complete.
+
+`dao-h-jakarta` shares the sources and tests of `dao-h` (`dao-h/src/main/java`, `dao-h/src/test`); only what differs between
+the Hibernate versions is in each module's own folder (`dao-h/src/main/java-hibernate5`, `dao-h-jakarta/src/main/java`), so
+the shared code must compile with Hibernate 5.6 and 7. `dao-h-jakarta` is built with Hibernate 7; to check the built classes
+with the oldest supported Hibernate version (as the build on GitHub does):
+
+```
+mvn clean install
+mvn -pl dao-h-jakarta -P hibernate-6.6 surefire:test
+```
 
 ## License
 

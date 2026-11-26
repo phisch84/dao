@@ -46,7 +46,8 @@
     <build>
         <plugins>
             <!--
-            src/main/java is shared with the module dao-h-jakarta (Hibernate 6.6 and later);
+            src/main/java, src/test/java and src/test/resources are shared with the module dao-h-jakarta (Hibernate 6.6 and later),
+            so they must work with all Hibernate versions;
             src/main/java-hibernate5 holds what is specific to Hibernate 5.6 (HibernateVersionSupport, package-info)
             -->
             <plugin>

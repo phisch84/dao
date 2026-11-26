@@ -1,6 +1,7 @@
 /**
  * A DAO (Data Access Object) which stores data objects in a database via Hibernate 5.6:
- * {@link com.schoste.ddd.infrastructure.dao.v4.hibernate.AbstractHibernateDAO}.
+ * {@link com.schoste.ddd.infrastructure.dao.v4.hibernate.AbstractHibernateDAO}. For Hibernate 6.6 and later (Java 17), use the
+ * artifact {@code dao4-hibernate-jakarta}; both have the same classes and behave the same, except for how the time is queried.
  * Data objects are deleted logically (the deleted flag is a column); time stamps come from the database's clock, with its
  * precision and time zone (override {@code getStorageTimestamp(Session)} for another clock). The time is queried with the select
  * statement of the SQL dialect (Hibernate's {@code DbTimestampType}); if the dialect has none, the host's clock is used.

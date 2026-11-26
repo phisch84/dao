@@ -11,6 +11,7 @@
         <module>dao</module>
         <module>dao-fs-serialization</module>
         <module>dao-h</module>
+        <module>dao-h-jakarta</module>
     </modules>
 
     <properties>
@@ -26,6 +27,9 @@
         <!-- latest Spring version compatible with Java 8 -->
         <spring.version>5.3.39</spring.version>
         <hibernate.version>5.6.15.Final</hibernate.version>
+        <!-- Hibernate of the module dao-h-jakarta (Java 17); its tests also run with Hibernate 6.6 (see maven-build.yml) -->
+        <hibernate-jakarta.version>7.4.15.Final</hibernate-jakarta.version>
+        <sqlite.version>3.54.1.0</sqlite.version>
         <dbcp.version>1.4</dbcp.version>
         <hsql.version>2.7.4</hsql.version>
     </properties>
@@ -61,6 +65,18 @@
                 <artifactId>hibernate-core</artifactId>
                 <version>${hibernate.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${hibernate-jakarta.version}</version>
+            </dependency>
+            <!-- SQLite dialect of Hibernate 6 and later, used by tests -->
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-community-dialects</artifactId>
+                <version>${hibernate-jakarta.version}</version>
+                <scope>test</scope>
+            </dependency>
 
             <!-- Database drivers depend on the actual usage and therefore their scope is TEST -->
             <dependency>
@@ -73,6 +89,12 @@
                 <groupId>org.hsqldb</groupId>
                 <artifactId>hsqldb</artifactId>
                 <version>${hsql.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.xerial</groupId>
+                <artifactId>sqlite-jdbc</artifactId>
+                <version>${sqlite.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
